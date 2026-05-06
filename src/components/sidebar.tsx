@@ -14,21 +14,20 @@ import {
   Moon,
   Settings,
   Users,
-  Grid2x2Check
+  Grid2x2Check,
+  Briefcase
 } from 'lucide-react';
 import { ApiService } from '../services/ApiService';
 import type { TestResponse } from '../interfaces/response';
 import { useLocation, Link, Outlet} from 'react-router-dom';
-//import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/auth';
-
 
 // --- Interfaces de TypeScript ---
 interface NavItem {
   id: string;
   label: string;
   icon: React.ElementType;
-  color?: string; // Para dar toques de color a los iconos
+  color?: string; 
   route: string;
 }
 
@@ -39,26 +38,23 @@ const mainNavItems: NavItem[] = [
 ];
 
 const catalogItems: NavItem[] = [
-  { id: 'paros', label: 'Paros', icon: PauseCircle, color: 'text-red-500', route: '/parosCrud' }, // Mantenemos rojo para paros por convención de alerta
+  { id: 'paros', label: 'Paros', icon: PauseCircle, color: 'text-red-500', route: '/parosCrud' }, 
   { id: 'turnos', label: 'Turnos', icon: Clock, color: 'text-lime-500', route: '/turnosCrud' },
   { id: 'lotes', label: 'Lotes', icon: Boxes, color: 'text-teal-500' , route: '/lotesCrud'},
   { id: 'maquinas', label: 'Maquinas', icon: Settings, color: 'text-lime-500', route: '/maquinasCrud' },
   { id: 'lineas_produccion', label: 'Lineas de Produccion', icon: FolderTree, color: 'text-cyan-500', route: '/lineas_produccion' },
   { id: 'productos', label: 'Productos', icon: Grid2x2Check, color: 'text-lime-500', route: '/productosCrud' },
   { id: 'Usuarios', label: 'Usuarios', icon: Users, color: 'text-lime-500', route: '/usuariosCrud' },
+  { id: 'formas_trabajo', label: 'Formas de Trabajo', icon: Briefcase, color: 'text-amber-500', route: '/formaTrabajoCrud' },
 ];
-
-
 
 export default function Sidebar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  //const [activeView, setActiveView] = useState('produccion');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const location = useLocation();
   const {user} = useAuth();
-  // Efecto para aplicar el tema oscuro a nivel raíz del HTML
-  useEffect(() => {
   
+  useEffect(() => {
    const testAppscript: Promise<TestResponse> = ApiService.testAppscript();
     console.log(testAppscript);
     console.log(user);
@@ -77,17 +73,13 @@ export default function Sidebar() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
-  // Nota que la función contenedora DEBE ser async
+
 const probarConexion = async () => {
     try {
-        // Con el 'await', el código se pausa aquí hasta que la promesa se resuelva
         const data: TestResponse = await ApiService.testAppscript();
-        
-        // Ahora 'data' ya no es una promesa, es tu objeto real
         console.log("Mensaje:", data.mensaje);
         console.log("Servidor:", data.servidor);
         console.log("Timestamp:", data.timestamp);
-        
     } catch (error) {
         console.error("Falló la prueba:", error);
     }
@@ -95,23 +87,20 @@ const probarConexion = async () => {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // Componente interno para renderizar los enlaces del menú
   const NavLink = ({ item }: { item: NavItem }) => {
     const isActive = location.pathname === item.route;
     const Icon = item.icon;
 
     return (
-     // Usamos Link en lugar de button
       <Link
         to={item.route}
-        onClick={() => setIsSidebarOpen(false)} // Cierra en móvil
+        onClick={() => setIsSidebarOpen(false)} 
         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
           isActive 
             ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-l-4 border-blue-500 shadow-sm' 
             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 border-l-4 border-transparent'
         }`}
       >
-        {/* Mantenemos el color específico del ícono si no está activo, si está activo usa el color principal */}
         <Icon className={`w-5 h-5 ${isActive ? 'text-blue-500' : item.color || 'text-slate-400'}`} />
         <span className="font-medium text-sm">{item.label}</span>
       </Link>
@@ -121,8 +110,6 @@ const probarConexion = async () => {
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900 font-sans overflow-hidden transition-colors duration-300">
       
-      {/* --- SIDEBAR --- */}
-      {/* Overlay para móvil */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity"
@@ -135,7 +122,6 @@ const probarConexion = async () => {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Logo / Header del Sidebar */}
         <div className="flex items-center justify-between px-6 h-16 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-gradient-to-br from-cyan-400 to-lime-400 rounded-lg shadow-sm">
@@ -150,10 +136,7 @@ const probarConexion = async () => {
           </button>
         </div>
 
-        {/* Navegación Principal */}
         <div className="flex-1 overflow-y-auto py-6 px-3 space-y-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
-          
-          {/* Sección Principal */}
           <div>
             <p className="px-4 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
               Principal
@@ -165,7 +148,6 @@ const probarConexion = async () => {
             </div>
           </div>
 
-          {/* Sección Catálogos */}
           <div>
             <div className="flex items-center gap-2 px-4 mb-3">
               <FolderTree className="w-4 h-4 text-slate-400 dark:text-slate-500" />
@@ -179,10 +161,8 @@ const probarConexion = async () => {
               ))}
             </div>
           </div>
-
         </div>
 
-        {/* Footer del Sidebar (opcional) */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3 px-2">
             <div className="w-8 h-8 rounded-full bg-cyan-50 dark:bg-slate-800 flex items-center justify-center">
@@ -196,10 +176,7 @@ const probarConexion = async () => {
         </div>
       </aside>
 
-      {/* --- ÁREA PRINCIPAL --- */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        
-        {/* --- NAVBAR --- */}
         <header className="h-16 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-8 z-10 shrink-0 shadow-sm transition-colors duration-300">
           <div className="flex items-center gap-4">
             <button 
@@ -209,13 +186,11 @@ const probarConexion = async () => {
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-semibold text-slate-800 dark:text-white hidden sm:block capitalize">
-              {/* Mostramos el título de la vista activa basándonos en el ID */}
-             CRUD DE PAROS
+              Panel de Administración
             </h1>
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Botón de Modo Oscuro / Claro */}
             <button 
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-slate-800 transition-colors"
@@ -224,7 +199,6 @@ const probarConexion = async () => {
               {isDarkMode ? <Sun className="w-5 h-5 text-lime-400" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            {/* Notificaciones */}
             <button className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-slate-800 transition-colors relative">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-slate-950"></span>
@@ -232,7 +206,6 @@ const probarConexion = async () => {
             
             <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-2"></div>
 
-            {/* Perfil de Usuario */}
             <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="text-right hidden md:block">
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{user?.nombre + " " + user?.apellidoP+" "+ user?.apellidoM}</p>
@@ -245,7 +218,6 @@ const probarConexion = async () => {
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 lg:p-8 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
             <div className="max-w-6xl mx-auto w-full">
-                {/* ESTA ES LA MAGIA: Aquí se inyecta ParosCrud */}
                 <Outlet /> 
             </div>
         </main>

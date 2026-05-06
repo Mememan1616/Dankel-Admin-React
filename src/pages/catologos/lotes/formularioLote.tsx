@@ -11,10 +11,8 @@ import {
   Save,
   Hash,
   AlignLeft,
-  Activity,
   Package,
   Briefcase,
-
   X,
   Plus,
   Layers
@@ -27,9 +25,10 @@ interface FormularioLoteProps {
   action: string;
   lote?: Lote;
   refreshData: () => void;
+  existingLotes: Lote[]; // Añadido para validar si existe
 }
 
-export default function FormularioLote({ isOpen, onClose, title, lote, action, refreshData }: FormularioLoteProps) {
+export default function FormularioLote({ isOpen, onClose, title, lote, action, refreshData, existingLotes }: FormularioLoteProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +42,7 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
     id_lote: '',
     lote: '',
     descripcion: '',
-    estatus: true,
+    estatus: true, // Por defecto al crear será activo
     id_forma_trabajo: '',
     forma_trabajo: '',
     id_producto: '',
@@ -73,15 +72,16 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
 
   const loadAllData = async () => {
     try {
+      const maquinasData: Maquina[] = await ApiService.getAllMaquinasLote();
+      const formasTrabajoData: FormaTrabajo[] = await ApiService.getAllFormasTrabajo();
+      const productosData: Producto[] = await ApiService.getAllProductos(); // Asegúrate de tener este método en tu ApiService
 
+      // Ordenar productos alfabéticamente
+      const productosOrdenados = productosData.sort((a, b) => a.producto.localeCompare(b.producto));
 
-      const maquinas: Maquina[] = await ApiService.getAllMaquinasLote();
-      const formasTrabajo: FormaTrabajo[] = await ApiService.getAllFormasTrabajo();
-      const productos: Producto[] = await ApiService.getAllProductos() // Asegúrate de tener este método en tu ApiService
-
-      setMaquinas(maquinas);
-      setFormasTrabajo(formasTrabajo);
-      setProductos(productos);
+      setMaquinas(maquinasData);
+      setFormasTrabajo(formasTrabajoData);
+      setProductos(productosOrdenados);
     } catch (error) {
       console.error('Error al cargar catálogos:', error);
     }
@@ -119,7 +119,6 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
       }));
     }
   };
-  // ... dentro de FormularioLote
 
   const handleMaquinaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value;
@@ -155,26 +154,32 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
     }));
   };
 
-
-
-  const handleToggleChange = (field: keyof Lote) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: typeof prev[field] === 'boolean' ? !prev[field] : prev[field],
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
+
+    // Validación de Nombre de Lote Duplicado
+    const nombreLoteIngresado = formData.lote.trim().toLowerCase();
+    const loteExistente = existingLotes.find(l => l.lote.trim().toLowerCase() === nombreLoteIngresado);
+
+    if (action === 'Crear' && loteExistente) {
+        alert('Ya existe un lote con este nombre. Por favor, ingresa un nombre distinto.');
+        return;
+    }
+
+    if (action === 'Editar' && loteExistente && loteExistente.id_lote !== formData.id_lote) {
+        alert('Ya existe otro lote con este nombre. Por favor, ingresa un nombre distinto.');
+        return;
+    }
+
     setIsLoading(true);
     const actionMap: Record<string, () => Promise<ApiResponse<{ clave: string }>>> = {
       'Crear': () => ApiService.insertLote(formData),
       'Editar': () => ApiService.updateLote(formData),
       'Eliminar': () => ApiService.deleteLote(formData.id_lote)
     };
-    try {
 
+    try {
       const executeAction = actionMap[action];
 
       if (!executeAction) {
@@ -234,7 +239,6 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
                     disabled
                     className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-slate-950 transition-colors"
                     placeholder="Lo generara el sistema..."
-
                   />
                 </div>
               </div>
@@ -337,22 +341,8 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
                   />
                 </div>
               </div>
+              {/* El switch de Estatus ha sido removido de aquí como solicitaste */}
 
-              <div className="col-span-1 md:col-span-2">
-                <div className="flex items-center justify-between p-4 border rounded-xl dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                  <div className="flex items-center gap-3">
-                    <Activity className="w-5 h-5 text-indigo-500" />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Estatus del Lote</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleChange('estatus')}
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${formData.estatus ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-600'}`}
-                  >
-                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${formData.estatus ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-              </div>
             </div>
             {showSuccess && (
               <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-xl flex items-center gap-3 animate-bounce">

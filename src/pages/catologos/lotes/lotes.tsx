@@ -48,7 +48,22 @@ export default function LotesCrud() {
         }
     };
 
-    // --- LÓGICA DE FILTRADO ---
+    // --- FUNCIÓN PARA CAMBIAR ESTATUS DIRECTO EN TABLA ---
+    const handleToggleEstatus = async (lote: Lote) => {
+        try {
+            const loteActualizado = { ...lote, estatus: !lote.estatus };
+            const response = await ApiService.updateLote(loteActualizado);
+            if (response.success) {
+                getAllLotes(); // Refrescar la tabla
+            } else {
+                alert('Hubo un error al actualizar el estatus.');
+            }
+        } catch (error) {
+            console.error('Error al actualizar estatus:', error);
+            alert('Error de conexión al intentar actualizar el estatus.');
+        }
+    };
+
     // --- LÓGICA DE FILTRADO ---
     const lotesFiltrados = useMemo(() => {
         return lotes.filter((lote) => {
@@ -190,12 +205,19 @@ export default function LotesCrud() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${lote.estatus
-                                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
-                                                        : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
-                                                        }`}>
-                                                        {lote.estatus ? 'Activo' : 'Inactivo'}
-                                                    </span>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span className={`text-xs font-medium ${lote.estatus ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                            {lote.estatus ? 'Activo' : 'Inactivo'}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleToggleEstatus(lote)}
+                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${lote.estatus ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                                            title={lote.estatus ? 'Desactivar lote' : 'Activar lote'}
+                                                        >
+                                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${lote.estatus ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-2">
@@ -243,6 +265,7 @@ export default function LotesCrud() {
                 action={action}
                 refreshData={getAllLotes}
                 lote={selectedLote ? selectedLote : undefined}
+                existingLotes={lotes} // Pasamos los lotes para validar duplicados
             />
         </>
     );

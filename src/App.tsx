@@ -10,6 +10,7 @@ import ProductosCrud from './pages/catologos/productos/productos';
 import UsuariosCrud from './pages/catologos/usuarios/usuarios';
 import SemanasCrud from './pages/catologos/semanas/semanas';
 import LoginScreen, { useAuth } from './auth/auth';
+import FormasTrabajoCrud from './pages/catologos/formas_trabajos/formaTrabajoCrud';
 import { AuthProvider } from './auth/auth';
 //import FormularioParo from './pages/paros/formularioParo';
 import './App.css';
@@ -80,6 +81,7 @@ function App() {
           <Route path="/maquinasCrud" element={<MaquinasCrud />} />
           <Route path="/lineas_produccion" element={<LineasCrud />} />
           <Route path="/lotesCrud" element={<LotesCrud />} />
+          <Route path="/formaTrabajoCrud" element={<FormasTrabajoCrud />} />
           <Route path="/productosCrud" element={<ProductosCrud />} />
           <Route path="/usuariosCrud" element={<UsuariosCrud />} />
           <Route path="/semanasCrud" element={<SemanasCrud />} />

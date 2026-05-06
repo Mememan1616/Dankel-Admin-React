@@ -13,7 +13,6 @@ import type { FormaTrabajo } from '../interfaces/forma_trabajo';
 import type { Semana } from '../interfaces/semanas';
 //import type { Usuario } from '../interfaces/usuarios';
 
-
 // Declaramos google para que TS no marque error en el entorno local
 declare const google: any;
 
@@ -103,7 +102,6 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                             nombre: "Ampolleta Lista",
                             programado: false
                         },
-                        // Agregamos un segundo dato simulado para ver contraste en la tabla
                         {
                             id_paro: "paro4",
                             clave: "MANTENIMIENTO_PREV",
@@ -313,11 +311,9 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                                 }
                             ]
                         }
-
                     ] as Lote[],
                     error: null
                 } as unknown as T);
-
             }
             if (params.action === 'getAllProductos') {
                 return resolve({
@@ -370,15 +366,21 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                     result: [
                         {
                             id_forma_trabajo: "FT-100",
-                            nombre: "Continua"
+                            nombre: "Continua",
+                            descripcion: "Forma de trabajo continua",
+                            estatus: true
                         },
                         {
                             id_forma_trabajo: "FT-200",
-                            nombre: "Por lotes (Batch)"
+                            nombre: "Por lotes (Batch)",
+                            descripcion: "Forma de trabajo por lotes",
+                            estatus: true
                         },
                         {
                             id_forma_trabajo: "FT-300",
-                            nombre: "Intermitente"
+                            nombre: "Intermitente",
+                            descripcion: "Forma de trabajo intermitente",
+                            estatus: true
                         }
                     ] as FormaTrabajo[],
                     error: null
@@ -425,7 +427,7 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                 if (typeof response === 'string') {
                     try {
                         const parsed = JSON.parse(response);
-                        resolve(parsed as T); // Aquí asignamos la interface
+                        resolve(parsed as T); 
                         return;
                     } catch (e) {
                         resolve(response as T);
@@ -433,7 +435,7 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                     }
                 }
 
-                resolve(response as T); // Aquí asignamos la interface
+                resolve(response as T); 
             })
             .withFailureHandler((error: Error) => {
                 clearTimeout(timeout);
@@ -444,21 +446,16 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
 };
 
 export const ApiService = {
-    // Le decimos explícitamente a runGoogle que devuelva un TestResponse
     async testAppscript(): Promise<TestResponse> {
         try {
-            // Hacemos la petición esperando la estructura ApiResponse
             const response = await runGoogle<ApiResponse<TestResponse>>('apiHandler', {
                 action: 'testAppscript'
             });
 
-            // Evaluamos si el backend arrojó un error controlado (ej. 400 o 500)
             if (!response.success) {
                 throw new Error(`Error del servidor (${response.status}): ${response.error}`);
             }
 
-            // Si todo salió bien (200), retornamos directamente la data que nos interesa
-            // Usamos el operador "!" porque si success es true, sabemos que result no es null
             return response.result!;
 
         } catch (error) {
@@ -467,7 +464,6 @@ export const ApiService = {
         }
     },
 
-    // Le decimos explícitamente a runGoogle que devuelva un LoginResponse
     async login(Code: string): Promise<Usuario> {
         try {
             const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', {
@@ -477,7 +473,6 @@ export const ApiService = {
             if (response.success && response.result) {
                 return response.result;
             } else {
-                // Si la API mandó un error controlado, lo lanzamos
                 throw new Error(response.error || 'Error desconocido en el login');
             }
 
@@ -628,6 +623,7 @@ export const ApiService = {
             throw error;
         }
     },
+
     //=====================================================================
     // Insert
     //=====================================================================
@@ -766,8 +762,25 @@ export const ApiService = {
         }
     },
 
+    // --- NUEVO: Insertar Forma Trabajo ---
+    async insertFormaTrabajo(forma: FormaTrabajo): Promise<ApiResponse<{ clave: string }>> {
+        try {
+            const response = await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
+                action: 'insertFormaTrabajo',
+                data: forma // Enviamos como 'data' para que haga match con tu backend
+            });
+            if (!response.success) {
+                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
+            }
+            return response;
+        } catch (error) {
+            console.error('Error en insertFormaTrabajo:', error);
+            throw error;
+        }
+    },
+
     //-----------------------------------------------------
-    //UPDATES
+    // UPDATES
     //-----------------------------------------------------
     async updateUser(user: Usuario): Promise<ApiResponse<{ clave: string }>> {
         try {
@@ -906,6 +919,24 @@ export const ApiService = {
         }
     },
 
+    // --- NUEVO: Actualizar Forma Trabajo ---
+    async updateFormaTrabajo(forma: FormaTrabajo): Promise<ApiResponse<{ clave: string }>> {
+        try {
+            const response = await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
+                action: 'updateFormaTrabajo',
+                id: forma.id_forma_trabajo, // Enviamos 'id' como espera el backend
+                data: forma                 // Enviamos 'data'
+            });
+            if (!response.success) {
+                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
+            }
+            return response;
+        } catch (error) {
+            console.error('Error en updateFormaTrabajo:', error);
+            throw error;
+        }
+    },
+
     //==============================================================
     // DELETE
     //==============================================================
@@ -1021,6 +1052,21 @@ export const ApiService = {
             throw error;
         }
     },
-    
 
+
+    async deleteFormaTrabajo(id_forma_trabajo: string): Promise<ApiResponse<{ clave: string }>> {
+        try {
+            const response = await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
+                action: 'deleteFormaTrabajo',
+                id: id_forma_trabajo // Tu backend extrae "id" de la variable params
+            });
+            if (!response.success) {
+                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
+            }
+            return response;
+        } catch (error) {
+            console.error('Error en deleteFormaTrabajo:', error);
+            throw error;
+        }
+    }
 }
