@@ -42,7 +42,6 @@ export default function FormularioUsuario({ isOpen, onClose, title, usuario, act
   const [formData, setFormData] = useState<Usuario>(defaultFormData);
 
   useEffect(() => {
-    console.log("action:" + action);
     if (isOpen) {
       if (usuario) {
         setFormData(usuario);
@@ -76,10 +75,9 @@ export default function FormularioUsuario({ isOpen, onClose, title, usuario, act
     const actionMap: Record<string, () => Promise<ApiResponse<{ clave: string }>>> = {
       'Crear': () => ApiService.insertUser(formData),
       'Editar': () => ApiService.updateUser(formData),
-      'Eliminar': () => ApiService.deleteUser(formData.id_user), // Asumiendo que existe
+      'Eliminar': () => ApiService.deleteUser(formData.id_user), 
     };
     try {
-
       const executeAction = actionMap[action];
 
       if (!executeAction) {
@@ -172,7 +170,7 @@ export default function FormularioUsuario({ isOpen, onClose, title, usuario, act
                     readOnly
                     disabled
                     className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/80 text-gray-500 dark:text-gray-400 sm:text-sm cursor-not-allowed"
-                    placeholder="Lo generara el sistema..."
+                    placeholder="Lo generará el sistema..."
                   />
                 </div>
               </div>
@@ -187,10 +185,10 @@ export default function FormularioUsuario({ isOpen, onClose, title, usuario, act
                   <input
                     type="text"
                     name="clave_trabajador"
-                    value={formData.clave_trabajador}
+                    value={formData.clave_trabajador || ''}
                     onChange={handleInputChange}
                     className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors"
-                    placeholder="Ej. TR-4500"
+                    placeholder="Ej. 123456"
                   />
                 </div>
               </div>
@@ -253,7 +251,6 @@ export default function FormularioUsuario({ isOpen, onClose, title, usuario, act
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    required
                     className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 sm:text-sm"
                     placeholder="usuario@empresa.com"
                   />
@@ -276,6 +273,8 @@ export default function FormularioUsuario({ isOpen, onClose, title, usuario, act
                     <option value="Operador">Operador</option>
                     <option value="Administrador">Administrador</option>
                     <option value="Supervisor">Supervisor</option>
+                    {/* 👇 AQUÍ ESTÁ EL ROL NUEVO 👇 */}
+                    <option value="Fabricacion">Fabricación</option>
                   </select>
                 </div>
               </div>
@@ -296,7 +295,7 @@ export default function FormularioUsuario({ isOpen, onClose, title, usuario, act
             {showSuccess && (
               <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 rounded-xl flex items-center gap-3">
                 <Save className="w-5 h-5 text-green-600" />
-                <p className="text-sm font-medium text-green-800 dark:text-green-300">¡Usuario actualizado con éxito!</p>
+                <p className="text-sm font-medium text-green-800 dark:text-green-300">¡Usuario guardado con éxito!</p>
               </div>
             )}
 

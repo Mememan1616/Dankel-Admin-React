@@ -55,10 +55,8 @@ export default function Sidebar() {
   const {user} = useAuth();
   
   useEffect(() => {
-   const testAppscript: Promise<TestResponse> = ApiService.testAppscript();
-    console.log(testAppscript);
-    console.log(user);
     probarConexion();
+    const testAppscript: Promise<TestResponse> = ApiService.testAppscript();
     testAppscript.then(response => {
       if (response.mensaje === '¡Conexión exitosa desde local!') {
         setIsDarkMode(true);
@@ -74,16 +72,13 @@ export default function Sidebar() {
     }
   }, [isDarkMode]);
 
-const probarConexion = async () => {
+  const probarConexion = async () => {
     try {
-        const data: TestResponse = await ApiService.testAppscript();
-        console.log("Mensaje:", data.mensaje);
-        console.log("Servidor:", data.servidor);
-        console.log("Timestamp:", data.timestamp);
+        await ApiService.testAppscript(); // 👇 Ya no guardamos el resultado en una variable
     } catch (error) {
         console.error("Falló la prueba:", error);
     }
-}
+  }
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -106,6 +101,14 @@ const probarConexion = async () => {
       </Link>
     );
   };
+
+  // 👇 LÓGICA PARA LIMPIAR EL NOMBRE 👇
+  // Esto junta nombre, apellidoP y apellidoM, filtrando los "undefined" o nulos.
+  // Si todo viene vacío, usa el email o la palabra "Usuario".
+  const nombreCompleto = user 
+    ? [user.nombre, user.apellidoP, user.apellidoM].filter(Boolean).join(" ") 
+    : "";
+  const displayNombre = nombreCompleto || user?.email || "Usuario del Sistema";
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900 font-sans overflow-hidden transition-colors duration-300">
@@ -208,8 +211,11 @@ const probarConexion = async () => {
 
             <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="text-right hidden md:block">
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{user?.nombre + " " + user?.apellidoP+" "+ user?.apellidoM}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Línea A</p>
+                {/* 👇 AQUI IMPRIMIMOS EL NOMBRE LIMPIO 👇 */}
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate max-w-[150px]">
+                  {displayNombre}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{user?.rol || 'Sin rol asignado'}</p>
               </div>
               <UserCircle className="w-8 h-8 text-cyan-500" />
             </button>

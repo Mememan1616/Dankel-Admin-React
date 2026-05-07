@@ -481,7 +481,23 @@ export const ApiService = {
             throw error;
         }
     },
-
+    async loginByEmail(email: string): Promise<Usuario> {
+        try {
+            const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', {
+                action: 'loginByEmail',
+                email: email
+            });
+            
+            if (response.success && response.result) {
+                return response.result;
+            } else {
+                throw new Error(response.error || 'Error desconocido en el login por correo');
+            }
+        } catch (error) {
+            console.error('Error en loginByEmail:', error);
+            throw error;
+        }
+    },
     async getAllParos(): Promise<Paro[]> {
         try {
             const response = await runGoogle<ApiResponse<Paro[]>>('apiHandler', {
