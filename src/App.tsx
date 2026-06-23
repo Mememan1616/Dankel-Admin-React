@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Sidebar from './components/sidebar';
 import ParosCrud from './pages/catologos/paros/paros';
 import TurnosCrud from './pages/catologos/turnos/turnos';
@@ -11,25 +11,33 @@ import UsuariosCrud from './pages/catologos/usuarios/usuarios';
 import SemanasCrud from './pages/catologos/semanas/semanas';
 import LoginScreen, { useAuth, AuthProvider } from './auth/auth';
 import FormasTrabajoCrud from './pages/catologos/formas_trabajos/formaTrabajoCrud';
-import DashboardPage from './pages/dashboard/DashboardPage'; // <-- IMPORTACIÓN DEL DASHBOARD
+import DashboardPage from './pages/dashboard/DashboardPage';
+// 👇 AGREGAMOS LA IMPORTACIÓN QUE FALTABA 👇
+import ProduccionCrud from './pages/catologos/produccion/produccion'; 
 import './App.css';
 
-const ProtectedRoute = () => {
-  // ---------------------------------------------------------
-  // LÓGICA DE LOGIN 
-  // ---------------------------------------------------------
+const ProtectedRoute = ({ allowedRoles }: { allowedRoles: string[] }) => {
+  const { user } = useAuth();
+  
+  if (!user) return <Navigate to="/login" replace />;
+
+  const userRole = String(user.rol || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const rolesPermitidos = allowedRoles.map(r => r.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+
+  if (!rolesPermitidos.includes(userRole)) {
+    return <Navigate to="/" replace />; 
+  }
+
+  return <Outlet />;
+};
+
+const RequireAuthLayout = () => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  else {
-    // Como tu componente Sidebar ya tiene el navbar, el menú lateral 
-    // y el <Outlet /> para inyectar las vistas, solo retornamos el Sidebar aquí.
-    return <Sidebar />;
-  }
-}
+  return <Sidebar />;
+};
 
 function App() {
-
-  // Lógica para detectar el modo oscuro/claro del navegador
   useEffect(() => {
     const checkTheme = () => {
       if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -49,26 +57,30 @@ function App() {
     <AuthProvider>
       <HashRouter>
         <Routes>
-          {/* RUTA PÚBLICA */}
           <Route path="/login" element={<LoginScreen />} />
 
-          {/* RUTAS PRIVADAS (Con Sidebar y formato) */}
-          {/* Al poner ProtectedRoute como 'element' padre, envuelve todas las rutas hijas */}
-          <Route element={<ProtectedRoute />}>
+          <Route element={<RequireAuthLayout />}>
             
-            {/* RUTA PRINCIPAL - EL NUEVO DASHBOARD */}
-            <Route path="/" element={<DashboardPage />} />
-            
-            {/* RUTAS DE CATÁLOGOS */}
-            <Route path="/parosCrud" element={<ParosCrud />} />
-            <Route path="/turnosCrud" element={<TurnosCrud />} />
-            <Route path="/maquinasCrud" element={<MaquinasCrud />} />
-            <Route path="/lineas_produccion" element={<LineasCrud />} />
-            <Route path="/lotesCrud" element={<LotesCrud />} />
-            <Route path="/formaTrabajoCrud" element={<FormasTrabajoCrud />} />
-            <Route path="/productosCrud" element={<ProductosCrud />} />
-            <Route path="/usuariosCrud" element={<UsuariosCrud />} />
-            <Route path="/semanasCrud" element={<SemanasCrud />} />
+            {/* PERMITIDO PARA ADMIN Y FABRICACIÓN */}
+            <Route element={<ProtectedRoute allowedRoles={['administrador', 'fabricacion']} />}>
+              <Route path="/" element={<DashboardPage />} />
+              {/* 👇 AGREGAMOS LA RUTA QUE SE HABÍA BORRADO 👇 */}
+              <Route path="/produccion" element={<ProduccionCrud />} /> 
+              <Route path="/semanasCrud" element={<SemanasCrud />} />
+              <Route path="/lotesCrud" element={<LotesCrud />} />
+              <Route path="/turnosCrud" element={<TurnosCrud />} />
+            </Route>
+
+            {/* EXCLUSIVO PARA ADMINISTRADOR */}
+            <Route element={<ProtectedRoute allowedRoles={['administrador']} />}>
+              <Route path="/parosCrud" element={<ParosCrud />} />
+              <Route path="/maquinasCrud" element={<MaquinasCrud />} />
+              <Route path="/lineas_produccion" element={<LineasCrud />} />
+              <Route path="/productosCrud" element={<ProductosCrud />} />
+              <Route path="/usuariosCrud" element={<UsuariosCrud />} />
+              <Route path="/formaTrabajoCrud" element={<FormasTrabajoCrud />} />
+            </Route>
+
           </Route>
         </Routes>
       </HashRouter>

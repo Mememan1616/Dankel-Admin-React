@@ -11,6 +11,7 @@ import type { User } from '../interfaces/login';
 import type { Usuario } from '../interfaces/usuarios';
 import type { FormaTrabajo } from '../interfaces/forma_trabajo';
 import type { Semana } from '../interfaces/semanas';
+import type { ProduccionLog, RegistroParoLog } from '../interfaces/dashboard';
 //import type { Usuario } from '../interfaces/usuarios';
 
 // Declaramos google para que TS no marque error en el entorno local
@@ -464,35 +465,59 @@ export const ApiService = {
         }
     },
 
-    async login(Code: string): Promise<Usuario> {
+   async login(clave: string): Promise<Usuario> {
         try {
-            const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', {
-                action: 'login',
-                clave: Code
-            });
-            if (response.success && response.result) {
-                return response.result;
-            } else {
-                throw new Error(response.error || 'Error desconocido en el login');
+            // Si estás usando tu simulador local:
+            /*
+            if (isLocal) {
+                if (clave === '123456789') {
+                    return { id_user: "1", nombre: "Operador", email: "op@test.com", rol: "Operador", estatus: true } as Usuario;
+                }
+                throw new Error("Clave incorrecta en local");
             }
+            */
 
+            const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', { 
+                action: 'login', 
+                clave: clave 
+            });
+            
+            if (!response.success) throw new Error(response.error || 'Error desconocido en el login');
+            return response.result as Usuario;
         } catch (error) {
             console.error('Error en login:', error);
             throw error;
         }
     },
-    async loginByEmail(email: string): Promise<Usuario> {
+
+    // 👇 Función actualizada para recibir contraseña 👇
+    async loginByEmail(email: string, contrasena: string): Promise<Usuario> {
         try {
-            const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', {
-                action: 'loginByEmail',
-                email: email
-            });
-            
-            if (response.success && response.result) {
-                return response.result;
-            } else {
-                throw new Error(response.error || 'Error desconocido en el login por correo');
+            // Si estás usando tu simulador local (Modifícalo según tu código local):
+            /*
+            if (isLocal) {
+                if (email === 'developer1@ptree.com.mx' && contrasena === 'dankel2026') {
+                    return { 
+                        id_user: "-Os2iyiYzRILqlNTrsT0", 
+                        nombre: "Ana Paulina", 
+                        apellidoP: "Duran", 
+                        email: "developer1@ptree.com.mx", 
+                        rol: "Administrador", 
+                        estatus: true 
+                    } as Usuario;
+                }
+                throw new Error("Correo o contraseña incorrectos en local");
             }
+            */
+
+            const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', { 
+                action: 'loginByEmail', 
+                email: email,
+                contrasena: contrasena // <-- Viaja la contraseña hacia Apps Script
+            });
+
+            if (!response.success) throw new Error(response.error || 'Error desconocido en el login por correo');
+            return response.result as Usuario;
         } catch (error) {
             console.error('Error en loginByEmail:', error);
             throw error;
@@ -1084,5 +1109,67 @@ export const ApiService = {
             console.error('Error en deleteFormaTrabajo:', error);
             throw error;
         }
+    },
+
+    // Importa las interfaces arriba: import type { ProduccionLog, RegistroParoLog } from '../interfaces/dashboard';
+
+    // Importa las interfaces arriba: import type { ProduccionLog, RegistroParoLog } from '../interfaces/dashboard';
+
+    async getAllProduccion(): Promise<ProduccionLog[]> {
+        try {
+            const response = await runGoogle<ApiResponse<ProduccionLog[]>>('apiHandler', { action: 'getAllProduccion' });
+            // 👇 AQUÍ ESTÁ EL CAMBIO 👇
+            if (!response.success) throw new Error(response.error || 'Error desconocido en Producción');
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getAllProduccion:', error);
+            throw error;
+        }
+    },
+
+
+   // 👇 Solo estas 3 funciones van en tu ApiService.ts de React 👇
+
+    async insertProduccion(produccion: any): Promise<ApiResponse<any>> {
+        return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'insertProduccion', produccion });
+    },
+    
+    async updateProduccion(produccion: any): Promise<ApiResponse<any>> {
+        return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'updateProduccion', id_produccion: produccion.id_produccion, produccion });
+    },
+    
+    async deleteProduccion(id_produccion: string): Promise<ApiResponse<any>> {
+        return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteProduccion', id_produccion });
+    },
+
+    async getAllRegistroParos(): Promise<RegistroParoLog[]> {
+        try {
+            const response = await runGoogle<ApiResponse<RegistroParoLog[]>>('apiHandler', { action: 'getAllRegistroParos' });
+            // 👇 AQUÍ ESTÁ EL CAMBIO 👇
+            if (!response.success) throw new Error(response.error || 'Error desconocido en Paros');
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getAllRegistroParos:', error);
+            throw error;
+        }
+    },
+
+    async getAllProduccionProductoMaquina(): Promise<any[]> {
+        try {
+            const response = await runGoogle<ApiResponse<any[]>>('apiHandler', { action: 'getAllProduccionProductoMaquina' });
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getAllProduccionProductoMaquina:', error);
+            return [];
+        }
+    },
+    
+    async insertProduccionProductoMaquina(data: any): Promise<ApiResponse<any>> {
+        return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'insertProduccionProductoMaquina', data });
+    },
+    
+    async deleteProduccionProductoMaquina(id_relacion: string): Promise<ApiResponse<any>> {
+        return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteProduccionProductoMaquina', id_relacion });
     }
+    
 }

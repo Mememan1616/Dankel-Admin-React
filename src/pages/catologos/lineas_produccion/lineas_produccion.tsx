@@ -71,10 +71,10 @@ export default function LineasCrud() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6" >
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white capitalize">
-                        Líneas de Producción
+                        Departamentos
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                        Administra y visualiza los registros de Líneas de Producción.
+                        Administra y visualiza los registros de Departamentos.
                     </p>
                 </div>
 
@@ -135,7 +135,7 @@ export default function LineasCrud() {
                         <table className="w-full text-left border-collapse whitespace-nowrap min-w-full">
                             <thead>
                                 <tr>
-                                    <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Línea de Producción</th>
+                                    <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Departamento</th>
                                     <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Descripción</th>
                                     <th className="px-6 py-4 font-medium text-center text-slate-700 dark:text-slate-200">Estatus</th>
                                     <th className="px-6 py-4 font-medium text-right text-slate-700 dark:text-slate-200">Acciones</th>
@@ -194,7 +194,7 @@ export default function LineasCrud() {
                                 ) : (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                                            No se encontraron líneas de producción con los filtros actuales.
+                                            No se encontraron departamentos con los filtros actuales.
                                         </td>
                                     </tr>
                                 )}

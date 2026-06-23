@@ -1,26 +1,23 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Turno } from '../../../interfaces/turnos'; // Ajusta la ruta a tu interfaz
+import type { Turno } from '../../../interfaces/turnos';
 import { ApiService } from '../../../services/ApiService';
 import {
     Edit,
-    Trash2,
     Search,
     Filter,
     Plus,
-    CalendarClock // Ícono actualizado
+    CalendarClock
 } from 'lucide-react';
-import FormularioTurno from './formularioTurno'; // Asegúrate de crear este archivo en la misma carpeta
+import FormularioTurno from './formularioTurno';
 
 export default function TurnosCrud() {
     const [turnos, setTurnos] = useState<Turno[]>([]);
     
-    // --- ESTADOS PARA EL MODAL ---
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [action, setAction] = useState('');
     const [selectedTurno, setSelectedTurno] = useState<Turno | null>(null);
     const [title, setTitle] = useState('');
 
-    // --- ESTADOS PARA FILTROS ---
     const [searchTerm, setSearchTerm] = useState('');
     const [mostrarFiltros, setMostrarFiltros] = useState(false);
     const [filtroEstatus, setFiltroEstatus] = useState('todos');
@@ -32,13 +29,12 @@ export default function TurnosCrud() {
     const getAllTurnos = async () => {
         try {
             const turnosData: Turno[] = await ApiService.getAllTurnos();
-            setTurnos(turnosData);
+            setTurnos(turnosData || []);
         } catch (error) {
             console.error('Error en getAllTurnos:', error);
         }
     };
 
-    // --- FUNCIÓN PARA ABRIR EL FORMULARIO ---
     const MostrarFormulario = (action: string, turno?: Turno) => {
         setTitle(action + " turno");
         setIsModalOpen(true);
@@ -51,16 +47,12 @@ export default function TurnosCrud() {
         }
     };
 
-    // --- LÓGICA DE FILTRADO ---
     const turnosFiltrados = useMemo(() => {
         return turnos.filter((turno) => {
-            // 1. Búsqueda por texto (nombre del turno)
             const busqueda = searchTerm.toLowerCase();
             const coincideTexto = 
-                turno.turno?.toLowerCase().includes(busqueda) ||
-                turno.id_turno?.toLowerCase().includes(busqueda);
+                turno.turno?.toLowerCase().includes(busqueda); // Ocultamos búsqueda por ID
 
-            // 2. Filtro por Estatus
             const coincideEstatus = 
                 filtroEstatus === 'todos' ? true :
                 filtroEstatus === 'activos' ? turno.estatus === true :
@@ -74,56 +66,47 @@ export default function TurnosCrud() {
         <>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white capitalize">
-                        Turnos
-                    </h2>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white capitalize">Turnos</h2>
                     <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                         Administra y visualiza los registros de Turnos.
                     </p>
                 </div>
-
                 <button 
                     onClick={() => MostrarFormulario('Crear')}
-                    className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-cyan-500 to-lime-500 hover:from-cyan-600 hover:to-lime-600 text-white rounded-lg shadow-md font-medium text-sm transition-all flex items-center justify-center gap-2 focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 dark:focus:ring-offset-slate-900"
+                    className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-cyan-500 to-lime-500 hover:from-cyan-600 hover:to-lime-600 text-white rounded-lg shadow-md font-medium text-sm transition-all flex items-center justify-center gap-2"
                 >
                     <Plus className="w-4 h-4" /> Nuevo Registro
                 </button>
             </div>
 
             <div className="space-y-4">
-                {/* --- Barra de Búsqueda y Filtros --- */}
-                <div className="flex flex-col sm:flex-row gap-4 justify-between bg-white dark:bg-slate-950 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors duration-300">
+                <div className="flex flex-col sm:flex-row gap-4 justify-between bg-white dark:bg-slate-950 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
                     <div className="relative max-w-md w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Buscar por ID o nombre del turno..."
+                            placeholder="Buscar nombre del turno..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 transition-colors"
+                            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500"
                         />
                     </div>
                     <button 
                         onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                        className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                            mostrarFiltros 
-                                ? 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-400 dark:border-cyan-800' 
-                                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'
-                        }`}
+                        className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border ${mostrarFiltros ? 'bg-cyan-50 text-cyan-700 border-cyan-200' : 'bg-slate-100 text-slate-700 border-slate-200'}`}
                     >
-                        <Filter className="w-4 h-4" /> {mostrarFiltros ? 'Ocultar Filtros' : 'Filtros'}
+                        <Filter className="w-4 h-4" /> Filtros
                     </button>
                 </div>
 
-                {/* --- Panel desplegable de Filtros Adicionales --- */}
                 {mostrarFiltros && (
-                    <div className="flex flex-col sm:flex-row gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex flex-col sm:flex-row gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                         <div className="w-full sm:w-auto">
-                            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Estatus</label>
+                            <label className="block text-xs font-medium text-slate-500 mb-1">Estatus</label>
                             <select 
                                 value={filtroEstatus} 
                                 onChange={(e) => setFiltroEstatus(e.target.value)}
-                                className="w-full sm:w-48 px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none text-slate-700 dark:text-slate-200"
+                                className="w-full sm:w-48 px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
                             >
                                 <option value="todos">Todos</option>
                                 <option value="activos">Activos</option>
@@ -133,8 +116,7 @@ export default function TurnosCrud() {
                     </div>
                 )}
 
-                {/* --- Tabla --- */}
-                <div className="bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors duration-300 overflow-hidden">
+                <div className="bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse whitespace-nowrap min-w-full">
                             <thead>
@@ -148,64 +130,45 @@ export default function TurnosCrud() {
                             </thead>
                             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                                 {turnosFiltrados.length > 0 ? (
-                                    turnosFiltrados.map((turno) => {
-                                        return (
-                                            <tr key={turno.id_turno} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-500 shrink-0">
-                                                            <CalendarClock className="w-5 h-5" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-medium text-slate-900 dark:text-white">{turno.turno}</p>
-                                                            <p className="text-xs text-slate-500 dark:text-slate-400">ID: {turno.id_turno}</p>
-                                                        </div>
+                                    turnosFiltrados.map((turno) => (
+                                        <tr key={turno.id_turno} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-500 shrink-0">
+                                                        <CalendarClock className="w-5 h-5" />
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">
-                                                        {turno.hora_inicio}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">
-                                                        {turno.hora_termino}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${turno.estatus
-                                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
-                                                        : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
-                                                        }`}>
-                                                        {turno.estatus ? 'Activo' : 'Inactivo'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <button 
-                                                            className="p-1.5 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors" 
-                                                            title="Editar"
-                                                            onClick={() => MostrarFormulario('Editar', turno)}
-                                                        >
-                                                            <Edit className="w-4 h-4" />
-                                                        </button>
-                                                        <button 
-                                                            className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" 
-                                                            title="Eliminar"
-                                                            onClick={() => MostrarFormulario('Eliminar', turno)}
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
+                                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{turno.turno}</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">
+                                                    {turno.hora_inicio}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">
+                                                    {turno.hora_termino}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${turno.estatus ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-800'}`}>
+                                                    {turno.estatus ? 'Activo' : 'Inactivo'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button 
+                                                    className="p-1.5 text-slate-400 hover:text-cyan-600" 
+                                                    title="Editar / Inactivar"
+                                                    onClick={() => MostrarFormulario('Editar', turno)}
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                                            No se encontraron turnos con los filtros actuales.
-                                        </td>
+                                        <td colSpan={5} className="px-6 py-12 text-center text-slate-500">No se encontraron turnos.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -214,19 +177,18 @@ export default function TurnosCrud() {
                 </div>
             </div>
 
-            {/* --- COMPONENTE DEL FORMULARIO --- */}
             <FormularioTurno
                 isOpen={isModalOpen}
                 onClose={() => {
                     setIsModalOpen(false);
                     setSelectedTurno(null);
                     setAction('');
-                
                 }}
                 title={title}
                 action={action}
                 turno={selectedTurno ? selectedTurno : undefined}
                 refreshData={getAllTurnos}
+                existingTurnos={turnos} // 👇 Pasamos lista para validar
             />
         </>
     );

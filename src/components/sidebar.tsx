@@ -15,48 +15,56 @@ import {
   Settings,
   Users,
   Grid2x2Check,
-  Briefcase
+  Briefcase,
+  Activity,
+  LogOut // <-- Importamos el icono de Logout
 } from 'lucide-react';
 import { ApiService } from '../services/ApiService';
-import type { TestResponse } from '../interfaces/response';
-import { useLocation, Link, Outlet} from 'react-router-dom';
+import { useLocation, Link, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/auth';
 
-// --- Interfaces de TypeScript ---
 interface NavItem {
   id: string;
   label: string;
   icon: React.ElementType;
   color?: string; 
   route: string;
+  roles: string[]; 
 }
 
-// --- Datos de Navegación ---
 const mainNavItems: NavItem[] = [
-  { id: 'produccion', label: 'Producción', icon: Factory, color: 'text-cyan-500', route: '/produccion' },
-  { id: 'semanas', label: 'Semanas', icon: Calendar, color: 'text-indigo-500', route: '/semanasCrud' },
+  { id: 'dashboard', label: 'Dashboard', icon: Activity, color: 'text-blue-500', route: '/', roles: ['administrador', 'fabricacion'] },
+  { id: 'produccion', label: 'Producción', icon: Factory, color: 'text-cyan-500', route: '/produccion', roles: ['administrador', 'fabricacion'] },
+  { id: 'semanas', label: 'Semanas', icon: Calendar, color: 'text-indigo-500', route: '/semanasCrud', roles: ['administrador', 'fabricacion'] },
 ];
 
 const catalogItems: NavItem[] = [
-  { id: 'paros', label: 'Paros', icon: PauseCircle, color: 'text-red-500', route: '/parosCrud' }, 
-  { id: 'turnos', label: 'Turnos', icon: Clock, color: 'text-lime-500', route: '/turnosCrud' },
-  { id: 'lotes', label: 'Lotes', icon: Boxes, color: 'text-teal-500' , route: '/lotesCrud'},
-  { id: 'maquinas', label: 'Maquinas', icon: Settings, color: 'text-lime-500', route: '/maquinasCrud' },
-  { id: 'lineas_produccion', label: 'Lineas de Produccion', icon: FolderTree, color: 'text-cyan-500', route: '/lineas_produccion' },
-  { id: 'productos', label: 'Productos', icon: Grid2x2Check, color: 'text-lime-500', route: '/productosCrud' },
-  { id: 'Usuarios', label: 'Usuarios', icon: Users, color: 'text-lime-500', route: '/usuariosCrud' },
-  { id: 'formas_trabajo', label: 'Formas de Trabajo', icon: Briefcase, color: 'text-amber-500', route: '/formaTrabajoCrud' },
+  { id: 'lotes', label: 'Lotes', icon: Boxes, color: 'text-teal-500' , route: '/lotesCrud', roles: ['administrador', 'fabricacion'] },
+  { id: 'turnos', label: 'Turnos', icon: Clock, color: 'text-lime-500', route: '/turnosCrud', roles: ['administrador', 'fabricacion'] },
+  { id: 'paros', label: 'Paros', icon: PauseCircle, color: 'text-red-500', route: '/parosCrud', roles: ['administrador'] }, 
+  { id: 'maquinas', label: 'Maquinas', icon: Settings, color: 'text-lime-500', route: '/maquinasCrud', roles: ['administrador'] },
+  { id: 'lineas_produccion', label: 'Departamentos', icon: FolderTree, color: 'text-cyan-500', route: '/lineas_produccion', roles: ['administrador'] },
+  { id: 'productos', label: 'Productos', icon: Grid2x2Check, color: 'text-lime-500', route: '/productosCrud', roles: ['administrador'] },
+  { id: 'Usuarios', label: 'Usuarios', icon: Users, color: 'text-lime-500', route: '/usuariosCrud', roles: ['administrador'] },
+  { id: 'formas_trabajo', label: 'Formas de Trabajo', icon: Briefcase, color: 'text-amber-500', route: '/formaTrabajoCrud', roles: ['administrador'] },
 ];
 
 export default function Sidebar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const location = useLocation();
-  const {user} = useAuth();
   
+  // 👇 Traemos la función logout del contexto
+  const { user, logout } = useAuth(); 
+  
+  const userRole = String(user?.rol || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const principalFiltrado = mainNavItems.filter(item => item.roles.includes(userRole));
+  const catalogosFiltrados = catalogItems.filter(item => item.roles.includes(userRole));
+
   useEffect(() => {
     probarConexion();
-    const testAppscript: Promise<TestResponse> = ApiService.testAppscript();
+    const testAppscript = ApiService.testAppscript();
     testAppscript.then(response => {
       if (response.mensaje === '¡Conexión exitosa desde local!') {
         setIsDarkMode(true);
@@ -74,7 +82,7 @@ export default function Sidebar() {
 
   const probarConexion = async () => {
     try {
-        await ApiService.testAppscript(); // 👇 Ya no guardamos el resultado en una variable
+        await ApiService.testAppscript();
     } catch (error) {
         console.error("Falló la prueba:", error);
     }
@@ -102,9 +110,6 @@ export default function Sidebar() {
     );
   };
 
-  // 👇 LÓGICA PARA LIMPIAR EL NOMBRE 👇
-  // Esto junta nombre, apellidoP y apellidoM, filtrando los "undefined" o nulos.
-  // Si todo viene vacío, usa el email o la palabra "Usuario".
   const nombreCompleto = user 
     ? [user.nombre, user.apellidoP, user.apellidoM].filter(Boolean).join(" ") 
     : "";
@@ -145,28 +150,39 @@ export default function Sidebar() {
               Principal
             </p>
             <div className="space-y-1">
-              {mainNavItems.map(item => (
+              {principalFiltrado.map(item => (
                 <NavLink key={item.id} item={item} />
               ))}
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 px-4 mb-3">
-              <FolderTree className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-              <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Catálogos
-              </p>
+          {catalogosFiltrados.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 px-4 mb-3">
+                <FolderTree className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  Catálogos
+                </p>
+              </div>
+              <div className="space-y-1">
+                {catalogosFiltrados.map(item => (
+                  <NavLink key={item.id} item={item} />
+                ))}
+              </div>
             </div>
-            <div className="space-y-1">
-              {catalogItems.map(item => (
-                <NavLink key={item.id} item={item} />
-              ))}
-            </div>
-          </div>
+          )}
         </div>
 
+        {/* 👇 BOTÓN DE LOGOUT Y VERSIÓN 👇 */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+          <button 
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 mb-4 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium text-sm">Cerrar Sesión</span>
+          </button>
+
           <div className="flex items-center gap-3 px-2">
             <div className="w-8 h-8 rounded-full bg-cyan-50 dark:bg-slate-800 flex items-center justify-center">
               <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400">v1</span>
@@ -179,7 +195,7 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-full">
         <header className="h-16 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-8 z-10 shrink-0 shadow-sm transition-colors duration-300">
           <div className="flex items-center gap-4">
             <button 
@@ -209,16 +225,18 @@ export default function Sidebar() {
             
             <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-2"></div>
 
-            <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            {/* Menú de usuario en el header */}
+            <div className="flex items-center gap-3">
               <div className="text-right hidden md:block">
-                {/* 👇 AQUI IMPRIMIMOS EL NOMBRE LIMPIO 👇 */}
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate max-w-[150px]">
                   {displayNombre}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{user?.rol || 'Sin rol asignado'}</p>
               </div>
-              <UserCircle className="w-8 h-8 text-cyan-500" />
-            </button>
+              <div className="w-8 h-8 rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
+                <UserCircle className="w-6 h-6" />
+              </div>
+            </div>
           </div>
         </header>
 

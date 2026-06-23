@@ -7,5 +7,6 @@ export interface Usuario{
     estatus: boolean;
     nombre: string;
     rol: string;
+    contrasena?: string;
     
 }

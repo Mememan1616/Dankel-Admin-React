@@ -1,4 +1,4 @@
-export interface Lote{
+export interface Lote {
     id_lote: string;
     lote: string;
     descripcion: string;
@@ -7,7 +7,11 @@ export interface Lote{
     forma_trabajo: string;
     id_producto: string;
     producto: string;
-    maquinas: Maquina[]
+    
+    // 👇 NUEVO: Campos para la semana
+    id_semana?: string;
+    
+    maquinas: Maquina[];
 }
 
 export interface Maquina {

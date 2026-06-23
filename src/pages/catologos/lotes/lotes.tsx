@@ -3,7 +3,6 @@ import type { Lote } from '../../../interfaces/lotes'; // Ajusta esta ruta segú
 import { ApiService } from '../../../services/ApiService';
 import {
     Edit,
-    Trash2,
     Search,
     Filter,
     Package, // Cambiado para representar un Lote
@@ -228,13 +227,7 @@ export default function LotesCrud() {
                                                         >
                                                             <Edit className="w-4 h-4" />
                                                         </button>
-                                                        <button 
-                                                            className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" 
-                                                            title="Eliminar"
-                                                            onClick={() => MostrarFormulario('Eliminar', lote)}
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                      
                                                     </div>
                                                 </td>
                                             </tr>
