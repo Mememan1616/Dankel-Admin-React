@@ -222,7 +222,8 @@ export default function SemanasCrud() {
                 title={title}
                 action={action}
                 semana={selectedSemana || undefined}
-                refreshData={getSemanas} // Útil para recargar la tabla tras guardar
+                refreshData={getSemanas}
+                existingSemanas={semanas}
             />
         </>
     );

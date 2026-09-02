@@ -1,32 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import type { Produccion } from '../../../interfaces/produccion';
-import type { Maquina } from '../../../interfaces/maquinas'; // 👇 IMPORT FALTANTE AGREGADO
+import type { Maquina } from '../../../interfaces/maquinas';
+import type { Turno } from '../../../interfaces/turnos';
+import type { Semana } from '../../../interfaces/semanas';
+import type { Lote } from '../../../interfaces/lotes';
+import type { Producto } from '../../../interfaces/productos';
+import type { Usuario } from '../../../interfaces/usuarios';
 import { ApiService } from '../../../services/ApiService';
-import { Save, Clock, Factory, X, CheckCircle2, Box } from 'lucide-react';
+import { Save, Clock, Factory, X, CheckCircle2, Box, Calendar, User, Package } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   action: string;
   produccion: Produccion | null;
-  refreshData: () => any; // 👇 CORRECCIÓN: Permite funciones asíncronas
+  refreshData: () => any;
   maquinas: Maquina[];
+  turnos: Turno[];
+  semanas: Semana[];
+  lotes: Lote[];
+  productos: Producto[];
+  usuarios: Usuario[];
 }
 
-export default function FormularioProduccion({ isOpen, onClose, action, produccion, refreshData, maquinas }: Props) {
+export default function FormularioProduccion({ isOpen, onClose, action, produccion, refreshData, maquinas, turnos, semanas, lotes, productos, usuarios }: Props) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [formData, setFormData] = useState<Produccion>({
-    id_produccion: '',
+  const [formData, setFormData] = useState<Partial<Produccion>>({
     id_maquina: '',
     id_turno: '',
     id_semana: '',
-    lote: '',
+    id_lote: '',
+    id_operador: '',
+    id_producto: '',
+    fecha_produccion: '',
+    fecha_termino: '',
     hora_inicio: '',
     hora_termino: '',
-    piezas_producidas: '',
-    piezas_buenas: ''
+    piezas_producidas: 0,
+    piezas_buenas: 0,
+    piezas_malas: 0,
+    produccionxHora: 0,
+    estatus: true
   });
 
   useEffect(() => {
@@ -43,15 +59,37 @@ export default function FormularioProduccion({ isOpen, onClose, action, producci
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleToggleChange = (field: keyof Produccion) => {
+    setFormData((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const CustomToggle = ({ enabled, onChange, label, icon: Icon, colorClass = "text-indigo-500" }: any) => (
+    <div className="flex items-center justify-between p-4 border rounded-xl dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-100 dark:border-slate-700">
+          <Icon className={`w-5 h-5 ${colorClass}`} />
+        </div>
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{label}</span>
+      </div>
+      <button
+        type="button"
+        onClick={onChange}
+        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ring-2 ring-transparent focus:ring-indigo-500 ${enabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-600'}`}
+      >
+        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+      </button>
+    </div>
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       if (action === 'Editar') {
-          await ApiService.updateProduccion(formData);
+          await ApiService.updateProduccion(formData as Produccion);
       } else if (action === 'Eliminar') {
-          await ApiService.deleteProduccion(formData.id_produccion || (formData as any).id); 
+          await ApiService.deleteProduccion((formData as any).id || (formData as any).id_produccion); 
       }
       
       setShowSuccess(true);
@@ -74,7 +112,7 @@ export default function FormularioProduccion({ isOpen, onClose, action, producci
   return (
     <div className="font-sans">
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
-        <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
+        <div className="w-full max-w-2xl max-h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-y-auto border border-gray-200 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
 
           <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -98,7 +136,41 @@ export default function FormularioProduccion({ isOpen, onClose, action, producci
           <form onSubmit={handleSubmit} className="p-6 sm:p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-              <div className="col-span-1 md:col-span-2">
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Semana</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <select
+                    name="id_semana"
+                    value={formData.id_semana}
+                    onChange={handleInputChange}
+                    disabled={isEliminar}
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Seleccione Semana</option>
+                    {semanas.map(s => <option key={s.id_semana} value={s.id_semana}>{s.descripcion || s.id_semana}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Lote</label>
+                <div className="relative">
+                  <Box className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <select
+                    name="id_lote"
+                    value={formData.id_lote}
+                    onChange={handleInputChange}
+                    disabled={isEliminar}
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Seleccione Lote</option>
+                    {lotes.map(l => <option key={l.id_lote} value={l.id_lote}>{l.lote || l.id_lote}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="col-span-1">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Máquina Asignada</label>
                 <div className="relative">
                   <Factory className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -109,24 +181,87 @@ export default function FormularioProduccion({ isOpen, onClose, action, producci
                     disabled={isEliminar}
                     className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white"
                   >
+                    <option value="">Seleccione Máquina</option>
                     {maquinas.map(m => <option key={m.id_maquina} value={m.id_maquina}>{m.maquina}</option>)}
                   </select>
                 </div>
               </div>
 
-              <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Lote Trabajado</label>
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Operador</label>
                 <div className="relative">
-                  <Box className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    name="lote"
-                    value={formData.lote}
+                  <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <select
+                    name="id_operador"
+                    value={formData.id_operador}
                     onChange={handleInputChange}
                     disabled={isEliminar}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                  />
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Seleccione Operador</option>
+                    {usuarios.map(u => <option key={u.id_user} value={u.id_user}>{u.nombre} {u.apellidoP}</option>)}
+                  </select>
                 </div>
+              </div>
+
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Producto</label>
+                <div className="relative">
+                  <Package className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <select
+                    name="id_producto"
+                    value={formData.id_producto}
+                    onChange={handleInputChange}
+                    disabled={isEliminar}
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Seleccione Producto</option>
+                    {productos.map(p => <option key={p.id_producto} value={p.id_producto}>{p.producto || p.id_producto}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Turno</label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <select
+                    name="id_turno"
+                    value={formData.id_turno}
+                    onChange={handleInputChange}
+                    disabled={isEliminar}
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Seleccione Turno</option>
+                    {turnos.map(t => <option key={t.id_turno} value={t.id_turno}>{t.turno}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Fecha Producción (DD/MM/YYYY)</label>
+                <input
+                  type="text"
+                  name="fecha_produccion"
+                  placeholder="DD/MM/YYYY"
+                  value={formData.fecha_produccion}
+                  onChange={handleInputChange}
+                  disabled={isEliminar}
+                  className="block w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Fecha Término (DD/MM/YYYY)</label>
+                <input
+                  type="text"
+                  name="fecha_termino"
+                  placeholder="DD/MM/YYYY"
+                  value={formData.fecha_termino}
+                  onChange={handleInputChange}
+                  disabled={isEliminar}
+                  className="block w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                />
               </div>
 
               <div className="col-span-1">
@@ -180,6 +315,16 @@ export default function FormularioProduccion({ isOpen, onClose, action, producci
                   disabled={isEliminar}
                   required
                   className="block w-full px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="col-span-1">
+                <CustomToggle
+                  enabled={formData.estatus}
+                  onChange={() => handleToggleChange('estatus')}
+                  label={formData.estatus ? "Estatus: Activo" : "Estatus: Inactivo"}
+                  icon={CheckCircle2}
+                  colorClass="text-green-500"
                 />
               </div>
 

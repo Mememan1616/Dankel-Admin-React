@@ -10,10 +10,15 @@ import ProductosCrud from './pages/catologos/productos/productos';
 import UsuariosCrud from './pages/catologos/usuarios/usuarios';
 import SemanasCrud from './pages/catologos/semanas/semanas';
 import LoginScreen, { useAuth, AuthProvider } from './auth/auth';
-import FormasTrabajoCrud from './pages/catologos/formas_trabajos/formaTrabajoCrud';
+
+import RegistroParosCrud from './pages/catologos/registro_paros/registroParos';
 import DashboardPage from './pages/dashboard/DashboardPage';
+import DashboardDiarioPage from './pages/dashboard/DashboardDiarioPage';
+import DashboardLotePage from './pages/dashboard/DashboardLotePage';
+import Dashboard2Page from './pages/dashboard/Dashboard2Page';
 // 👇 AGREGAMOS LA IMPORTACIÓN QUE FALTABA 👇
 import ProduccionCrud from './pages/catologos/produccion/produccion'; 
+
 import './App.css';
 
 const ProtectedRoute = ({ allowedRoles }: { allowedRoles: string[] }) => {
@@ -64,11 +69,15 @@ function App() {
             {/* PERMITIDO PARA ADMIN Y FABRICACIÓN */}
             <Route element={<ProtectedRoute allowedRoles={['administrador', 'fabricacion']} />}>
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/dashboard-diario" element={<DashboardDiarioPage />} />
+              <Route path="/dashboard-lote" element={<DashboardLotePage />} />
+              <Route path="/dashboard2" element={<Dashboard2Page />} />
               {/* 👇 AGREGAMOS LA RUTA QUE SE HABÍA BORRADO 👇 */}
               <Route path="/produccion" element={<ProduccionCrud />} /> 
               <Route path="/semanasCrud" element={<SemanasCrud />} />
               <Route path="/lotesCrud" element={<LotesCrud />} />
               <Route path="/turnosCrud" element={<TurnosCrud />} />
+              <Route path="/registroParosCrud" element={<RegistroParosCrud />} />
             </Route>
 
             {/* EXCLUSIVO PARA ADMINISTRADOR */}
@@ -78,7 +87,7 @@ function App() {
               <Route path="/lineas_produccion" element={<LineasCrud />} />
               <Route path="/productosCrud" element={<ProductosCrud />} />
               <Route path="/usuariosCrud" element={<UsuariosCrud />} />
-              <Route path="/formaTrabajoCrud" element={<FormasTrabajoCrud />} />
+
             </Route>
 
           </Route>

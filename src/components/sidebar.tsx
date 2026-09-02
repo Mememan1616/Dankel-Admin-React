@@ -4,6 +4,7 @@ import {
   PauseCircle, 
   Clock, 
   Boxes, 
+  Box,
   Calendar, 
   Menu, 
   X, 
@@ -15,8 +16,9 @@ import {
   Settings,
   Users,
   Grid2x2Check,
-  Briefcase,
+
   Activity,
+  ClipboardList,
   LogOut // <-- Importamos el icono de Logout
 } from 'lucide-react';
 import { ApiService } from '../services/ApiService';
@@ -34,6 +36,9 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: Activity, color: 'text-blue-500', route: '/', roles: ['administrador', 'fabricacion'] },
+  { id: 'dashboard-diario', label: 'OEE Diario', icon: Calendar, color: 'text-indigo-400', route: '/dashboard-diario', roles: ['administrador', 'fabricacion'] },
+  { id: 'dashboard-lote', label: 'OEE por Lote', icon: Box, color: 'text-purple-400', route: '/dashboard-lote', roles: ['administrador', 'fabricacion'] },
+  { id: 'dashboard2', label: 'Dashboard 2', icon: Activity, color: 'text-cyan-500', route: '/dashboard2', roles: ['administrador', 'fabricacion'] },
   { id: 'produccion', label: 'Producción', icon: Factory, color: 'text-cyan-500', route: '/produccion', roles: ['administrador', 'fabricacion'] },
   { id: 'semanas', label: 'Semanas', icon: Calendar, color: 'text-indigo-500', route: '/semanasCrud', roles: ['administrador', 'fabricacion'] },
 ];
@@ -42,11 +47,12 @@ const catalogItems: NavItem[] = [
   { id: 'lotes', label: 'Lotes', icon: Boxes, color: 'text-teal-500' , route: '/lotesCrud', roles: ['administrador', 'fabricacion'] },
   { id: 'turnos', label: 'Turnos', icon: Clock, color: 'text-lime-500', route: '/turnosCrud', roles: ['administrador', 'fabricacion'] },
   { id: 'paros', label: 'Paros', icon: PauseCircle, color: 'text-red-500', route: '/parosCrud', roles: ['administrador'] }, 
+  { id: 'registro_paros', label: 'Registro de Paros', icon: ClipboardList, color: 'text-orange-500', route: '/registroParosCrud', roles: ['administrador', 'fabricacion'] },
   { id: 'maquinas', label: 'Maquinas', icon: Settings, color: 'text-lime-500', route: '/maquinasCrud', roles: ['administrador'] },
   { id: 'lineas_produccion', label: 'Departamentos', icon: FolderTree, color: 'text-cyan-500', route: '/lineas_produccion', roles: ['administrador'] },
   { id: 'productos', label: 'Productos', icon: Grid2x2Check, color: 'text-lime-500', route: '/productosCrud', roles: ['administrador'] },
   { id: 'Usuarios', label: 'Usuarios', icon: Users, color: 'text-lime-500', route: '/usuariosCrud', roles: ['administrador'] },
-  { id: 'formas_trabajo', label: 'Formas de Trabajo', icon: Briefcase, color: 'text-amber-500', route: '/formaTrabajoCrud', roles: ['administrador'] },
+
 ];
 
 export default function Sidebar() {

@@ -9,9 +9,11 @@ import type { Lote } from '../interfaces/lotes';
 import type { Producto } from '../interfaces/productos';
 import type { User } from '../interfaces/login';
 import type { Usuario } from '../interfaces/usuarios';
-import type { FormaTrabajo } from '../interfaces/forma_trabajo';
+
 import type { Semana } from '../interfaces/semanas';
-import type { ProduccionLog, RegistroParoLog } from '../interfaces/dashboard';
+import type { Produccion } from '../interfaces/produccion';
+import type { RegistroParo } from '../interfaces/produccion';
+import type { ProduccionProductoMaquina } from '../interfaces/produccionxmaquina';
 //import type { Usuario } from '../interfaces/usuarios';
 
 // Declaramos google para que TS no marque error en el entorno local
@@ -64,6 +66,28 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                         message: 'Código QR incorrecto'
                     } as unknown as T);
                 }
+            }
+            if (params.action === 'loginByEmail') {
+                if (params.email === 'developer1@ptree.com.mx' && params.contrasena === 'dankel2026') {
+                    return resolve({
+                        success: true,
+                        status: 200,
+                        result: {
+                            id_user: "-Os2iyiYzRILqlNTrsT0",
+                            nombre: "Ana Paulina",
+                            apellidoP: "Duran",
+                            email: "developer1@ptree.com.mx",
+                            rol: "Administrador",
+                            estatus: true
+                        } as Usuario,
+                        error: null
+                    } as unknown as T);
+                }
+                return resolve({
+                    success: false,
+                    status: 401,
+                    error: "Correo o contraseña incorrectos en local"
+                } as unknown as T);
             }
             if (params.action === 'getAllParos') {
                 return resolve({
@@ -248,23 +272,15 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                     status: 200,
                     result: [
                         {
-                            id: "LOT-001",
+                            id_lote: "LOT-001",
                             lote: "Lote Ensamblaje A",
                             descripcion: "Producción continua del turno matutino",
                             estatus: true,
-                            id_forma_trabajo: "FT-100",
-                            forma_trabajo: "Continua",
+                            id_linea_trabajo: "linea1",
+                            linea: "Linea 1",
                             maquinas: [
-                                {
-                                    id_linea: "LIN-01",
-                                    id_maquina: "MAQ-101",
-                                    maquina: "Ensambladora Principal"
-                                },
-                                {
-                                    id_linea: "LIN-01",
-                                    id_maquina: "MAQ-102",
-                                    maquina: "Banda Transportadora Rápida"
-                                }
+                                { id_maquina: "MAQ-101", estatus: true },
+                                { id_maquina: "MAQ-102", estatus: true }
                             ]
                         },
                         {
@@ -272,24 +288,12 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                             lote: "Lote Empaquetado B",
                             descripcion: "Cierre y sellado de cajas para exportación",
                             estatus: true,
-                            id_forma_trabajo: "FT-200",
-                            forma_trabajo: "Por lotes (Batch)",
+                            id_linea_trabajo: "linea2",
+                            linea: "Linea 2",
                             maquinas: [
-                                {
-                                    id_linea: "LIN-02",
-                                    id_maquina: "MAQ-201",
-                                    maquina: "Empaquetadora Automática"
-                                },
-                                {
-                                    id_linea: "LIN-02",
-                                    id_maquina: "MAQ-202",
-                                    maquina: "Selladora Térmica"
-                                },
-                                {
-                                    id_linea: "LIN-02",
-                                    id_maquina: "MAQ-203",
-                                    maquina: "Báscula Calibradora"
-                                }
+                                { id_maquina: "MAQ-201", estatus: true },
+                                { id_maquina: "MAQ-202", estatus: true },
+                                { id_maquina: "MAQ-203", estatus: true }
                             ]
                         },
                         {
@@ -297,19 +301,11 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                             lote: "Lote Pruebas Calidad",
                             descripcion: "Lote de inspección post-mantenimiento preventivo",
                             estatus: false,
-                            id_forma_trabajo: "FT-300",
-                            forma_trabajo: "Intermitente",
+                            id_linea_trabajo: "linea1",
+                            linea: "Linea 1",
                             maquinas: [
-                                {
-                                    id_linea: "LIN-03",
-                                    id_maquina: "MAQ-301",
-                                    maquina: "Inyectora de Plástico"
-                                },
-                                {
-                                    id_linea: "LIN-03",
-                                    id_maquina: "MAQ-302",
-                                    maquina: "Brazo Robótico Articulado"
-                                }
+                                { id_maquina: "MAQ-301", estatus: true },
+                                { id_maquina: "MAQ-302", estatus: true }
                             ]
                         }
                     ] as Lote[],
@@ -360,30 +356,16 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                     error: null
                 } as unknown as T);
             }
-            if (params.action === 'getAllFormasTrabajo') {
+            if (params.action === 'getAllProduccionProductoMaquina') {
                 return resolve({
                     success: true,
                     status: 200,
                     result: [
-                        {
-                            id_forma_trabajo: "FT-100",
-                            nombre: "Continua",
-                            descripcion: "Forma de trabajo continua",
-                            estatus: true
-                        },
-                        {
-                            id_forma_trabajo: "FT-200",
-                            nombre: "Por lotes (Batch)",
-                            descripcion: "Forma de trabajo por lotes",
-                            estatus: true
-                        },
-                        {
-                            id_forma_trabajo: "FT-300",
-                            nombre: "Intermitente",
-                            descripcion: "Forma de trabajo intermitente",
-                            estatus: true
-                        }
-                    ] as FormaTrabajo[],
+                        { id_produccion_productoxmaquina: "ppm101", id_maquina: "maquina1", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 500, tipo: "Automática", estatus: true },
+                        { id_produccion_productoxmaquina: "ppm102", id_maquina: "maquina2", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 300, tipo: "Manual", estatus: true },
+                        { id_produccion_productoxmaquina: "ppm103", id_maquina: "maquina1", id_producto: "PROD-102", producto: "Aceite Lubricante Sintético", velocidad: 200, tipo: "Automática", estatus: true },
+                        { id_produccion_productoxmaquina: "ppm104", id_maquina: "maquina2", id_producto: "PROD-103", producto: "Banda Transportadora", velocidad: 400, tipo: "Automática", estatus: true },
+                    ] as ProduccionProductoMaquina[],
                     error: null
                 } as unknown as T);
             }
@@ -493,22 +475,6 @@ export const ApiService = {
     // 👇 Función actualizada para recibir contraseña 👇
     async loginByEmail(email: string, contrasena: string): Promise<Usuario> {
         try {
-            // Si estás usando tu simulador local (Modifícalo según tu código local):
-            /*
-            if (isLocal) {
-                if (email === 'developer1@ptree.com.mx' && contrasena === 'dankel2026') {
-                    return { 
-                        id_user: "-Os2iyiYzRILqlNTrsT0", 
-                        nombre: "Ana Paulina", 
-                        apellidoP: "Duran", 
-                        email: "developer1@ptree.com.mx", 
-                        rol: "Administrador", 
-                        estatus: true 
-                    } as Usuario;
-                }
-                throw new Error("Correo o contraseña incorrectos en local");
-            }
-            */
 
             const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', { 
                 action: 'loginByEmail', 
@@ -632,20 +598,6 @@ export const ApiService = {
             return response.result || [];
         } catch (error) {
             console.error('Error en getAllUsers:', error);
-            throw error;
-        }
-    },
-    async getAllFormasTrabajo(): Promise<FormaTrabajo[]> {
-        try {
-            const response = await runGoogle<ApiResponse<FormaTrabajo[]>>('apiHandler', {
-                action: 'getAllFormasTrabajo'
-            });
-            if (!response.success) {
-                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
-            }
-            return response.result || [];
-        } catch (error) {
-            console.error('Error en getAllFormasTrabajo:', error);
             throw error;
         }
     },
@@ -803,22 +755,6 @@ export const ApiService = {
         }
     },
 
-    // --- NUEVO: Insertar Forma Trabajo ---
-    async insertFormaTrabajo(forma: FormaTrabajo): Promise<ApiResponse<{ clave: string }>> {
-        try {
-            const response = await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
-                action: 'insertFormaTrabajo',
-                data: forma // Enviamos como 'data' para que haga match con tu backend
-            });
-            if (!response.success) {
-                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
-            }
-            return response;
-        } catch (error) {
-            console.error('Error en insertFormaTrabajo:', error);
-            throw error;
-        }
-    },
 
     //-----------------------------------------------------
     // UPDATES
@@ -959,24 +895,23 @@ export const ApiService = {
             throw error;
         }
     },
-
-    // --- NUEVO: Actualizar Forma Trabajo ---
-    async updateFormaTrabajo(forma: FormaTrabajo): Promise<ApiResponse<{ clave: string }>> {
+    async updateSemanaLotes(id_semana: string): Promise<ApiResponse<{ clave: string }>> {
         try {
             const response = await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
-                action: 'updateFormaTrabajo',
-                id: forma.id_forma_trabajo, // Enviamos 'id' como espera el backend
-                data: forma                 // Enviamos 'data'
+                action: 'updateSemanaLotes',
+                id_semana: id_semana
             });
             if (!response.success) {
                 throw new Error(`Error del servidor (${response.status}): ${response.error}`);
             }
+            console.log(response);
             return response;
         } catch (error) {
-            console.error('Error en updateFormaTrabajo:', error);
+            console.error('Error en updateLoteProduccion:', error);
             throw error;
         }
     },
+
 
     //==============================================================
     // DELETE
@@ -1095,29 +1030,14 @@ export const ApiService = {
     },
 
 
-    async deleteFormaTrabajo(id_forma_trabajo: string): Promise<ApiResponse<{ clave: string }>> {
-        try {
-            const response = await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
-                action: 'deleteFormaTrabajo',
-                id: id_forma_trabajo // Tu backend extrae "id" de la variable params
-            });
-            if (!response.success) {
-                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
-            }
-            return response;
-        } catch (error) {
-            console.error('Error en deleteFormaTrabajo:', error);
-            throw error;
-        }
-    },
 
     // Importa las interfaces arriba: import type { ProduccionLog, RegistroParoLog } from '../interfaces/dashboard';
 
     // Importa las interfaces arriba: import type { ProduccionLog, RegistroParoLog } from '../interfaces/dashboard';
 
-    async getAllProduccion(): Promise<ProduccionLog[]> {
+    async getAllProduccion(): Promise<Produccion[]> {
         try {
-            const response = await runGoogle<ApiResponse<ProduccionLog[]>>('apiHandler', { action: 'getAllProduccion' });
+            const response = await runGoogle<ApiResponse<Produccion[]>>('apiHandler', { action: 'getAllProduccion' });
             // 👇 AQUÍ ESTÁ EL CAMBIO 👇
             if (!response.success) throw new Error(response.error || 'Error desconocido en Producción');
             return response.result || [];
@@ -1142,9 +1062,9 @@ export const ApiService = {
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteProduccion', id_produccion });
     },
 
-    async getAllRegistroParos(): Promise<RegistroParoLog[]> {
+    async getAllRegistroParos(): Promise<RegistroParo[]> {
         try {
-            const response = await runGoogle<ApiResponse<RegistroParoLog[]>>('apiHandler', { action: 'getAllRegistroParos' });
+            const response = await runGoogle<ApiResponse<RegistroParo[]>>('apiHandler', { action: 'getAllRegistroParos' });
             // 👇 AQUÍ ESTÁ EL CAMBIO 👇
             if (!response.success) throw new Error(response.error || 'Error desconocido en Paros');
             return response.result || [];
@@ -1154,9 +1074,9 @@ export const ApiService = {
         }
     },
 
-    async getAllProduccionProductoMaquina(): Promise<any[]> {
+    async getAllProduccionProductoMaquina(): Promise<ProduccionProductoMaquina[]> {
         try {
-            const response = await runGoogle<ApiResponse<any[]>>('apiHandler', { action: 'getAllProduccionProductoMaquina' });
+            const response = await runGoogle<ApiResponse<ProduccionProductoMaquina[]>>('apiHandler', { action: 'getAllProduccionProductoMaquina' });
             return response.result || [];
         } catch (error) {
             console.error('Error en getAllProduccionProductoMaquina:', error);
@@ -1164,12 +1084,12 @@ export const ApiService = {
         }
     },
     
-    async insertProduccionProductoMaquina(data: any): Promise<ApiResponse<any>> {
+    async insertProduccionProductoMaquina(data: Omit<ProduccionProductoMaquina, 'id_produccion_productoxmaquina' | 'estatus'>): Promise<ApiResponse<any>> {
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'insertProduccionProductoMaquina', data });
     },
     
-    async deleteProduccionProductoMaquina(id_relacion: string): Promise<ApiResponse<any>> {
-        return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteProduccionProductoMaquina', id_relacion });
+    async deleteProduccionProductoMaquina(id_produccion_productoxmaquina: string): Promise<ApiResponse<any>> {
+        return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteProduccionProductoMaquina', id_produccion_productoxmaquina });
     }
     
 }

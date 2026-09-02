@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Maquina } from '../../../interfaces/maquinas';
+import type { ProduccionProductoMaquina } from '../../../interfaces/produccionxmaquina';
 import { ApiService } from '../../../services/ApiService';
 import { Edit, Search, Filter, Settings, Plus, Zap } from 'lucide-react';
 import FormularioMaquina from './formularioMaquina';
@@ -27,17 +28,17 @@ export default function MaquinasCrud() {
                 ApiService.getAllProduccionProductoMaquina()
             ]);
 
-            // Formatear relaciones asegurando que id_relacion exista
-            const relaciones = Array.isArray(relacionesData) 
+            // Formatear relaciones asegurando que id_produccion_productoxmaquina exista
+            const relaciones: ProduccionProductoMaquina[] = Array.isArray(relacionesData)
                 ? relacionesData.map(r => ({
                     ...r,
-                    // Si tu base de datos usa 'id' o 'clave' en lugar de 'id_relacion', lo atrapamos aquí:
-                    id_relacion: r.id_relacion || r.id || r.clave 
+                    // Normalizamos el campo ID por si el backend lo trae con otro nombre
+                    id_produccion_productoxmaquina: r.id_produccion_productoxmaquina || (r as any).id_relacion || (r as any).id || (r as any).clave,
                 }))
-                : Object.keys(relacionesData || {}).map(k => ({ 
-                    id_relacion: k, 
-                    ...(relacionesData as any)[k] 
-                }));
+                : Object.keys(relacionesData || {}).map(k => ({
+                    id_produccion_productoxmaquina: k,
+                    ...(relacionesData as any)[k],
+                } as ProduccionProductoMaquina));
 
             // 🔥 DEBUG: Imprime el primer elemento de cada arreglo para ver la estructura real
             console.log("Estructura de UNA Máquina:", maquinasData[0]);

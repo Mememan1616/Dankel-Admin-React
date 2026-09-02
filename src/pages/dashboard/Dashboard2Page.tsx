@@ -80,7 +80,7 @@ const MultiSelectDropdown = ({ title, options, selectedValues, onChange }: any) 
   );
 };
 
-export default function DashboardPage() {
+export default function Dashboard2Page() {
   const [loading, setLoading] = useState(true);
 
   const [produccion, setProduccion] = useState<any[]>([]);
@@ -102,8 +102,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     cargarDatos();
-    const intervalo = setInterval(() => cargarDatos(true), 30000);
-    return () => clearInterval(intervalo);
   }, []);
 
   const cargarDatos = async (isBackground = false) => {

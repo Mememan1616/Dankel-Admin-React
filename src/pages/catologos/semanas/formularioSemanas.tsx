@@ -21,9 +21,10 @@ interface FormularioSemanaProps {
   action: string;
   semana?: Semana;
   refreshData: () => void;
+  existingSemanas: Semana[];
 }
 
-export default function FormularioSemana({ isOpen, onClose, title, semana, action, refreshData }: FormularioSemanaProps) {
+export default function FormularioSemana({ isOpen, onClose, title, semana, action, refreshData, existingSemanas }: FormularioSemanaProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +35,7 @@ export default function FormularioSemana({ isOpen, onClose, title, semana, actio
     fecha_inicio: '',
     fecha_termino: '',
     estatus: true,
+    numero_lotes: 0
     
   };
 
@@ -67,8 +69,52 @@ export default function FormularioSemana({ isOpen, onClose, title, semana, actio
     }));
   };
 
+  // Parsea fechas en DD/MM/YYYY o YYYY-MM-DD correctamente
+  const parseFecha = (dateStr: string): number => {
+    if (!dateStr) return NaN;
+    // Formato YYYY-MM-DD (viene del input type="date")
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return new Date(dateStr).getTime();
+    }
+    // Formato DD/MM/YYYY (viene del backend)
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const day   = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year  = parseInt(parts[2], 10);
+      return new Date(year, month, day).getTime();
+    }
+    return NaN;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const inicio  = parseFecha(formData.fecha_inicio);
+    const termino = parseFecha(formData.fecha_termino);
+
+    if (termino < inicio) {
+      alert('La fecha de término no puede ser anterior a la fecha de inicio.');
+      return;
+    }
+
+    for (const sem of existingSemanas) {
+      if (action === 'Editar' && sem.id_semana === formData.id_semana) continue;
+
+      const semInicio  = parseFecha(sem.fecha_inicio);
+      const semTermino = parseFecha(sem.fecha_termino);
+
+      if (isNaN(semInicio) || isNaN(semTermino)) continue;
+
+      if (inicio <= semTermino && termino >= semInicio) {
+        alert(
+          `La semana "${sem.descripcion}" (${sem.fecha_inicio} a ${sem.fecha_termino}) ya cubre ese periodo. ` +
+          'Ajusta las fechas para que no se encimen.'
+        );
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     const actionMap: Record<string, () => Promise<ApiResponse<{ clave: string }>>> = {

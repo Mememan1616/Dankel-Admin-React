@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Lote } from '../../../interfaces/lotes'; // Ajusta esta ruta según tu proyecto
+import type { Lote } from '../../../interfaces/lotes';
+import type { Maquina } from '../../../interfaces/maquinas';
+import type { Semana } from '../../../interfaces/semanas';
 import { ApiService } from '../../../services/ApiService';
+import { parseFecha } from '../../../utils/fechas';
 import {
     Edit,
     Search,
@@ -12,6 +15,8 @@ import FormularioLote from './formularioLote'; // Asegúrate de que este compone
 
 export default function LotesCrud() {
     const [lotes, setLotes] = useState<Lote[]>([]);
+    const [catalogoMaquinas, setCatalogoMaquinas] = useState<Maquina[]>([]);
+    const [semanas, setSemanas] = useState<Semana[]>([]);
     
     // --- ESTADOS PARA EL MODAL ---
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,7 +31,27 @@ export default function LotesCrud() {
 
     useEffect(() => {
         getAllLotes();
+        loadMaquinasCatalog();
+        loadSemanasCatalog();
     }, []);
+
+    const loadSemanasCatalog = async () => {
+        try {
+            const data = await ApiService.getAllSemanas();
+            setSemanas(data);
+        } catch (error) {
+            console.error('Error al cargar catálogo de semanas:', error);
+        }
+    };
+
+    const loadMaquinasCatalog = async () => {
+        try {
+            const data = await ApiService.getAllMaquinasLote();
+            setCatalogoMaquinas(data);
+        } catch (error) {
+            console.error('Error al cargar catálogo de máquinas:', error);
+        }
+    };
 
     const getAllLotes = async () => {
         // Asegúrate de tener este método adaptado en tu ApiService
@@ -63,20 +88,26 @@ export default function LotesCrud() {
         }
     };
 
-    // --- LÓGICA DE FILTRADO ---
+    const semanasMap = useMemo(() => {
+        const map = new Map<string, Semana>();
+        semanas.forEach(s => map.set(s.id_semana, s));
+        return map;
+    }, [semanas]);
+
+    // --- LÓGICA DE FILTRADO Y ORDENAMIENTO ---
     const lotesFiltrados = useMemo(() => {
-        return lotes.filter((lote) => {
+        const filtrados = lotes.filter((lote) => {
             const busqueda = searchTerm.toLowerCase();
             
             // CONVERSIÓN SEGURA: Transformamos a String explícitamente y manejamos undefined/null
             const strLote = String(lote.lote || '').toLowerCase();
-            const strForma = String(lote.forma_trabajo || '').toLowerCase();
+            const strLinea = String(lote.linea || '').toLowerCase();
             const strDesc = String(lote.descripcion || '').toLowerCase();
 
             // 1. Búsqueda por texto segura
             const coincideTexto = 
                 strLote.includes(busqueda) || 
-                strForma.includes(busqueda) ||
+                strLinea.includes(busqueda) ||
                 strDesc.includes(busqueda);
 
             // 2. Filtro por Estatus
@@ -87,7 +118,23 @@ export default function LotesCrud() {
 
             return coincideTexto && coincideEstatus;
         });
-    }, [lotes, searchTerm, filtroEstatus]);
+
+        // Ordenar por fecha de inicio de la semana, descendente (más recientes primero).
+        // Los lotes sin semana o con fecha inválida van al final.
+        return filtrados.sort((a, b) => {
+            const inicioA = a.id_semana ? parseFecha(semanasMap.get(a.id_semana)?.fecha_inicio || '') : NaN;
+            const inicioB = b.id_semana ? parseFecha(semanasMap.get(b.id_semana)?.fecha_inicio || '') : NaN;
+            const valA = isNaN(inicioA) ? -Infinity : inicioA;
+            const valB = isNaN(inicioB) ? -Infinity : inicioB;
+            return valB - valA;
+        });
+    }, [lotes, searchTerm, filtroEstatus, semanasMap]);
+
+    const maquinasMap = useMemo(() => {
+        const map = new Map<string, string>();
+        catalogoMaquinas.forEach(m => map.set(m.id_maquina, m.maquina));
+        return map;
+    }, [catalogoMaquinas]);
 
     return (
         <>
@@ -116,7 +163,7 @@ export default function LotesCrud() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Buscar por lote, forma de trabajo o descripción..."
+                                        placeholder="Buscar por lote, departamento o descripción..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 transition-colors"
@@ -159,7 +206,8 @@ export default function LotesCrud() {
                             <thead>
                                 <tr>
                                     <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Lote</th>
-                                    <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Forma de trabajo</th>
+                                    <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Semana</th>
+                                    <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Departamento</th>
                                     <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Descripción</th>
                                     <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Máquinas asignadas</th>
                                     <th className="px-6 py-4 font-medium text-center text-slate-700 dark:text-slate-200">Estatus</th>
@@ -169,6 +217,7 @@ export default function LotesCrud() {
                             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                                 {lotesFiltrados.length > 0 ? (
                                     lotesFiltrados.map((lote) => {
+                                        const sem = lote.id_semana ? semanasMap.get(lote.id_semana) : undefined;
                                         return (
                                             <tr key={lote.id_lote} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                                 <td className="px-6 py-4">
@@ -182,8 +231,18 @@ export default function LotesCrud() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <p className="text-sm text-slate-700 dark:text-slate-300 capitalize">{lote.forma_trabajo}</p>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400">{lote.id_forma_trabajo}</p>
+                                                    {sem ? (
+                                                        <>
+                                                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{sem.descripcion}</p>
+                                                            <p className="text-xs text-slate-500 dark:text-slate-400">{sem.fecha_inicio} al {sem.fecha_termino}</p>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400 italic">Sin semana</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <p className="text-sm text-slate-700 dark:text-slate-300 capitalize">{lote.linea}</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400">{lote.id_linea_trabajo}</p>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <p className="text-sm text-slate-600 dark:text-slate-400 max-w-[200px] sm:max-w-xs truncate" title={lote.descripcion}>
@@ -195,7 +254,7 @@ export default function LotesCrud() {
                                                         {lote.maquinas && lote.maquinas.length > 0 ? (
                                                             lote.maquinas.map((maq) => (
                                                                 <span key={maq.id_maquina} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                                                    {maq.maquina}
+                                                                    {maquinasMap.get(maq.id_maquina) || maq.id_maquina}
                                                                 </span>
                                                             ))
                                                         ) : (
@@ -235,7 +294,7 @@ export default function LotesCrud() {
                                     })
                                 ) : (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                                        <td colSpan={7} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                                             No se encontraron lotes con los filtros actuales.
                                         </td>
                                     </tr>

@@ -1,10 +1,8 @@
 export type TipoAlimentacion = 'Automática' | 'Manual';
 
 export interface CapacidadMaquina {
-  id_relacion?: string; // ID único de la tabla intermedia
-  id_maquina?: string;
   id_producto: string;
-  producto: string;
+  producto: string; 
   velocidad: number;
   tipo: TipoAlimentacion;
 }

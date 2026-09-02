@@ -3,5 +3,6 @@ export interface Semana {
     descripcion: string;
     fecha_inicio: string;
     fecha_termino: string;
+    numero_lotes: number;
     estatus: boolean;
 }

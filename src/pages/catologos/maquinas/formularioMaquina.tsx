@@ -24,7 +24,7 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
   const [addCapProd, setAddCapProd] = useState('');
   const [addCapSpeed, setAddCapSpeed] = useState('');
   const [addCapType, setAddCapType] = useState<TipoAlimentacion>('Automática');
-  
+
   // Guardamos un historial de los IDs que el usuario quita para borrarlos al final de la BD
   const [relacionesAEliminar, setRelacionesAEliminar] = useState<string[]>([]);
 
@@ -35,7 +35,7 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
     estatus: true,
     linea: '',
     maquina: '',
-    capacidades: [] 
+    capacidades: []
   };
 
   const [formData, setFormData] = useState<Maquina>(defaultFormData);
@@ -74,7 +74,7 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
     if (isOpen && productosDisponibles.length > 0) {
       const alreadyAssigned = formData.capacidades?.map(c => c.producto) || [];
       const available = productosDisponibles.filter(p => !alreadyAssigned.includes(p.producto));
-      if (available.length > 0 && !available.map(a=>a.producto).includes(addCapProd)) {
+      if (available.length > 0 && !available.map(a => a.producto).includes(addCapProd)) {
         setAddCapProd(available[0].producto);
       } else if (available.length === 0) {
         setAddCapProd('');
@@ -112,34 +112,34 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
     const prodInfo = productosDisponibles.find(p => p.producto === addCapProd);
 
     const nuevaCapacidad: CapacidadMaquina = {
-        id_producto: prodInfo?.id_producto || '',
-        producto: addCapProd,
-        velocidad: speed,
-        tipo: addCapType
+      id_producto: prodInfo?.id_producto || '',
+      producto: addCapProd,
+      velocidad: speed,
+      tipo: addCapType
     };
 
     setFormData(prev => ({
-        ...prev,
-        capacidades: [...(prev.capacidades || []), nuevaCapacidad]
+      ...prev,
+      capacidades: [...(prev.capacidades || []), nuevaCapacidad]
     }));
     setAddCapSpeed('');
   };
 
-  const handleRemoveCapacity = (productName: string, id_relacion?: string) => {
+  const handleRemoveCapacity = (productName: string, id_produccion_productoxmaquina?: string) => {
     // 🔥 DEBUG preventivo: Verificamos si el ID llega correctamente desde la BD
-    console.log("Intentando remover:", productName, "| ID recibido de la BD:", id_relacion);
+    console.log("Intentando remover:", productName, "| ID recibido de la BD:", id_produccion_productoxmaquina);
 
-    // Si tenía un id_relacion válido, se registra para enviarse al backend
-    if (id_relacion) {
-        setRelacionesAEliminar(prev => [...prev, id_relacion]);
-        console.log("Añadido a la cola de eliminación:", id_relacion);
+    // Si tenía un id_produccion_productoxmaquina válido, se registra para enviarse al backend
+    if (id_produccion_productoxmaquina) {
+      setRelacionesAEliminar(prev => [...prev, id_produccion_productoxmaquina]);
+      console.log("Añadido a la cola de eliminación:", id_produccion_productoxmaquina);
     } else {
-        console.warn("⚠️ ALERTA: id_relacion es undefined. No se enviará ninguna orden de eliminación al servidor.");
+      console.warn("⚠️ ALERTA: id_produccion_productoxmaquina es undefined. No se enviará ninguna orden de eliminación al servidor.");
     }
 
     setFormData(prev => ({
-        ...prev,
-        capacidades: (prev.capacidades || []).filter(c => c.producto !== productName)
+      ...prev,
+      capacidades: (prev.capacidades || []).filter(c => c.producto !== productName)
     }));
   };
 
@@ -155,10 +155,10 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
     const maquinaExiste = existingMaquinas.find(m => m.maquina.trim().toLowerCase() === nombreIngresado);
 
     if (action === 'Crear' && maquinaExiste) {
-        alert('Este nombre de máquina ya existe.'); return;
+      alert('Este nombre de máquina ya existe.'); return;
     }
     if (action === 'Editar' && maquinaExiste && maquinaExiste.id_maquina !== formData.id_maquina) {
-        alert('Nombre usado por otra máquina.'); return;
+      alert('Nombre usado por otra máquina.'); return;
     }
 
     setIsLoading(true);
@@ -170,32 +170,32 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
       if (action === 'Crear') {
         const res = await ApiService.insertMaquina(formData);
         if (!res.success) throw new Error("Error creando máquina");
-        finalMachineId = (res.result as any)?.clave || (res.result as any)?.id || formData.id_maquina; 
+        finalMachineId = (res.result as any)?.clave || (res.result as any)?.id || formData.id_maquina;
       } else {
         await ApiService.updateMaquina(formData);
       }
 
       // 2. Ejecutar Eliminaciones en la Tabla Intermedia
       console.log("Procediendo a eliminar de la BD los siguientes IDs:", relacionesAEliminar);
-      for (const id_rel of relacionesAEliminar) {
-          await ApiService.deleteProduccionProductoMaquina(id_rel);
+      for (const id_ppm of relacionesAEliminar) {
+        await ApiService.deleteProduccionProductoMaquina(id_ppm);
       }
 
       // 3. Ejecutar Inserciones en la Tabla Intermedia (Solo las nuevas)
-      const nuevasRelaciones = (formData.capacidades || []).filter(c => !c.id_relacion);
+      const nuevasRelaciones = (formData.capacidades || []).filter(c => !(c as any).id_produccion_productoxmaquina);
       for (const cap of nuevasRelaciones) {
-          await ApiService.insertProduccionProductoMaquina({
-              id_maquina: finalMachineId,
-              id_producto: cap.id_producto,
-              producto: cap.producto,
-              velocidad: cap.velocidad,
-              tipo: cap.tipo
-          });
+        await ApiService.insertProduccionProductoMaquina({
+          id_maquina: finalMachineId,
+          id_producto: cap.id_producto,
+          producto: cap.producto,
+          velocidad: cap.velocidad,
+          tipo: cap.tipo
+        });
       }
 
       refreshData();
       onClose();
-      
+
     } catch (error) {
       console.error('Error en la petición:', error);
       alert('Ocurrió un error al guardar o asociar.');
@@ -212,7 +212,7 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
     <div className="font-sans">
       <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 transition-opacity" onClick={onClose}>
         <div className="w-full max-w-3xl bg-white dark:bg-[#0e1320] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]" onClick={(e) => e.stopPropagation()}>
-          
+
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-transparent">
             <div className="flex items-center gap-3">
               <div className="bg-indigo-100 dark:bg-indigo-600/10 p-2.5 rounded-lg border border-indigo-200 dark:border-indigo-500/20">
@@ -229,7 +229,7 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6">
-            
+
             {/* DATOS GENERALES */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
@@ -276,7 +276,7 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
               <div className="bg-slate-50 dark:bg-[#111623] p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                 <div className="md:col-span-5">
                   <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Producto</label>
-                  <select 
+                  <select
                     value={addCapProd}
                     onChange={(e) => setAddCapProd(e.target.value)}
                     disabled={availableProducts.length === 0}
@@ -288,7 +288,7 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
                 <div className="md:col-span-3">
                   <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Vel. (pzs x hr)</label>
                   <input type="number" value={addCapSpeed} onChange={(e) => setAddCapSpeed(e.target.value)}
-                    className="w-full bg-white dark:bg-[#1c2335] text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/60 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500" 
+                    className="w-full bg-white dark:bg-[#1c2335] text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/60 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -322,13 +322,17 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
                     {currentCaps.map(cap => (
                       <tr key={cap.producto} className="hover:bg-slate-50 dark:hover:bg-slate-900/30">
                         <td className="py-2.5 px-4 font-semibold text-slate-800 dark:text-slate-200">{cap.producto}</td>
-                        <td className="py-2.5 px-4 text-right font-mono text-indigo-600 dark:text-indigo-400 font-bold">{cap.velocidad.toLocaleString()} pzs/h</td>
+                        <td className="py-2.5 px-4 text-right font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                          {typeof cap.velocidad === 'number'
+                            ? cap.velocidad.toLocaleString()
+                            : (Number(cap.velocidad) || 0).toLocaleString()} pzs/h
+                        </td>
                         <td className="py-2.5 px-4 text-center">
                           <span className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10px] ${cap.tipo === 'Manual' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{cap.tipo}</span>
                         </td>
                         <td className="py-2.5 px-4 text-center">
                           {/* Pasamos id_relacion para asegurar que se registre el borrado */}
-                          <button type="button" onClick={() => handleRemoveCapacity(cap.producto, cap.id_relacion)} className="text-rose-500 hover:text-rose-600 p-1">
+                          <button type="button" onClick={() => handleRemoveCapacity(cap.producto, (cap as any).id_produccion_productoxmaquina)} className="text-rose-500 hover:text-rose-600 p-1">
                             <X className="w-4 h-4" />
                           </button>
                         </td>
