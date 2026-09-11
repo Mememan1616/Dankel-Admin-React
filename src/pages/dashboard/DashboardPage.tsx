@@ -537,7 +537,7 @@ export default function DashboardPage() {
       let completados = 0;
       let pendientes = 0;
 
-      lotes.forEach(l => {
+      lotes.filter(l => l.lote && String(l.lote).trim() !== '').forEach(l => {
         let pertenece = false;
         let estaCompletadoEnMaquina = false;
 
@@ -598,7 +598,7 @@ export default function DashboardPage() {
 
     const meta = Number(semana.numero_lotes) || 0;
 
-    const lotesSemana = lotes.filter(l => String(l.id_semana) === String(semanaId));
+    const lotesSemana = lotes.filter(l => String(l.id_semana) === String(semanaId) && l.lote && String(l.lote).trim() !== '');
     const realizados = lotesSemana.filter(l => {
       if (!Array.isArray(l.maquinas) || l.maquinas.length === 0) return false;
       return l.maquinas.every((m: any) =>

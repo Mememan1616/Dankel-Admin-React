@@ -15,6 +15,7 @@ import {
   Moon,
   Settings,
   Users,
+  Mail,
   Grid2x2Check,
 
   Activity,
@@ -52,6 +53,7 @@ const catalogItems: NavItem[] = [
   { id: 'lineas_produccion', label: 'Departamentos', icon: FolderTree, color: 'text-cyan-500', route: '/lineas_produccion', roles: ['administrador'] },
   { id: 'productos', label: 'Productos', icon: Grid2x2Check, color: 'text-lime-500', route: '/productosCrud', roles: ['administrador'] },
   { id: 'Usuarios', label: 'Usuarios', icon: Users, color: 'text-lime-500', route: '/usuariosCrud', roles: ['administrador'] },
+  { id: 'correos', label: 'Correos', icon: Mail, color: 'text-cyan-500', route: '/correosCrud', roles: ['administrador'] },
 
 ];
 

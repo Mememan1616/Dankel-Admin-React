@@ -14,6 +14,9 @@ import type { Semana } from '../interfaces/semanas';
 import type { Produccion } from '../interfaces/produccion';
 import type { RegistroParo } from '../interfaces/produccion';
 import type { ProduccionProductoMaquina } from '../interfaces/produccionxmaquina';
+import type {correo} from '../interfaces/correos';
+import type { TiempoEnvio } from '../interfaces/tiempoEnvio';
+
 //import type { Usuario } from '../interfaces/usuarios';
 
 // Declaramos google para que TS no marque error en el entorno local
@@ -410,7 +413,7 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                 if (typeof response === 'string') {
                     try {
                         const parsed = JSON.parse(response);
-                        resolve(parsed as T); 
+                        resolve(parsed as T);
                         return;
                     } catch (e) {
                         resolve(response as T);
@@ -418,7 +421,7 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                     }
                 }
 
-                resolve(response as T); 
+                resolve(response as T);
             })
             .withFailureHandler((error: Error) => {
                 clearTimeout(timeout);
@@ -447,7 +450,7 @@ export const ApiService = {
         }
     },
 
-   async login(clave: string): Promise<Usuario> {
+    async login(clave: string): Promise<Usuario> {
         try {
             // Si estás usando tu simulador local:
             /*
@@ -459,11 +462,11 @@ export const ApiService = {
             }
             */
 
-            const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', { 
-                action: 'login', 
-                clave: clave 
+            const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', {
+                action: 'login',
+                clave: clave
             });
-            
+
             if (!response.success) throw new Error(response.error || 'Error desconocido en el login');
             return response.result as Usuario;
         } catch (error) {
@@ -476,8 +479,8 @@ export const ApiService = {
     async loginByEmail(email: string, contrasena: string): Promise<Usuario> {
         try {
 
-            const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', { 
-                action: 'loginByEmail', 
+            const response = await runGoogle<ApiResponse<Usuario>>('apiHandler', {
+                action: 'loginByEmail',
                 email: email,
                 contrasena: contrasena // <-- Viaja la contraseña hacia Apps Script
             });
@@ -895,6 +898,7 @@ export const ApiService = {
             throw error;
         }
     },
+
     async updateSemanaLotes(id_semana: string): Promise<ApiResponse<{ clave: string }>> {
         try {
             const response = await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
@@ -1048,16 +1052,16 @@ export const ApiService = {
     },
 
 
-   // 👇 Solo estas 3 funciones van en tu ApiService.ts de React 👇
+    // 👇 Solo estas 3 funciones van en tu ApiService.ts de React 👇
 
     async insertProduccion(produccion: any): Promise<ApiResponse<any>> {
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'insertProduccion', produccion });
     },
-    
+
     async updateProduccion(produccion: any): Promise<ApiResponse<any>> {
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'updateProduccion', id_produccion: produccion.id_produccion, produccion });
     },
-    
+
     async deleteProduccion(id_produccion: string): Promise<ApiResponse<any>> {
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteProduccion', id_produccion });
     },
@@ -1083,13 +1087,51 @@ export const ApiService = {
             return [];
         }
     },
-    
+
+    async getCorreos(): Promise<correo[]> {
+        try {
+            const response = await runGoogle<ApiResponse<correo[]>>('apiHandler', { action: 'getCorreos' });
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getCorreos:', error);
+            return [];
+        }
+    },
+    async insertCorreos(data: correo): Promise<ApiResponse<any>> {
+        return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'insertCorreos', data });
+    },
+    async updateCorreos(data: correo): Promise<ApiResponse<{ clave: string }>> {
+        return await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
+            action: 'updateCorreos',
+            id_correo: data.id_correo,
+            correo: data
+        });
+    },
+    async deleteCorreos(id_correo: string): Promise<ApiResponse<any>> {
+        return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteCorreos', id_correo });
+    },
     async insertProduccionProductoMaquina(data: Omit<ProduccionProductoMaquina, 'id_produccion_productoxmaquina' | 'estatus'>): Promise<ApiResponse<any>> {
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'insertProduccionProductoMaquina', data });
     },
-    
+
     async deleteProduccionProductoMaquina(id_produccion_productoxmaquina: string): Promise<ApiResponse<any>> {
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteProduccionProductoMaquina', id_produccion_productoxmaquina });
-    }
-    
+    },
+
+    async getCorreoDuracion(): Promise<TiempoEnvio> {
+        try {
+            const response = await runGoogle<ApiResponse<TiempoEnvio>>('apiHandler', { action: 'getCorreoDuracion' });
+            return response.result || {} as TiempoEnvio;
+        } catch (error) {
+            console.error('Error en getCorreoDuracion:', error);
+            return {} as TiempoEnvio;
+        }
+    },
+    async updateCorreoDuracion(data: TiempoEnvio): Promise<ApiResponse<{ clave: string }>> {
+        return await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
+            action: 'updateCorreoDuracion',
+            data
+        });
+    },
+
 }

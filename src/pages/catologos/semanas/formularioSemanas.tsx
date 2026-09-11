@@ -28,6 +28,7 @@ export default function FormularioSemana({ isOpen, onClose, title, semana, actio
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const isSubmitting = React.useRef(false);
 
   const defaultFormData: Semana = {
     id_semana: '',
@@ -89,6 +90,9 @@ export default function FormularioSemana({ isOpen, onClose, title, semana, actio
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSubmitting.current || isLoading) return;
+    isSubmitting.current = true;
 
     const inicio  = parseFecha(formData.fecha_inicio);
     const termino = parseFecha(formData.fecha_termino);
@@ -143,6 +147,7 @@ export default function FormularioSemana({ isOpen, onClose, title, semana, actio
       console.error('Error en la petición:', error);
     } finally {
       setIsLoading(false);
+      isSubmitting.current = false;
     }
   };
 

@@ -8,6 +8,7 @@ import LineasCrud from './pages/catologos/lineas_produccion/lineas_produccion';
 import LotesCrud from './pages/catologos/lotes/lotes';
 import ProductosCrud from './pages/catologos/productos/productos';
 import UsuariosCrud from './pages/catologos/usuarios/usuarios';
+import CorreosCrud from './pages/catologos/correos/correos';
 import SemanasCrud from './pages/catologos/semanas/semanas';
 import LoginScreen, { useAuth, AuthProvider } from './auth/auth';
 
@@ -87,6 +88,7 @@ function App() {
               <Route path="/lineas_produccion" element={<LineasCrud />} />
               <Route path="/productosCrud" element={<ProductosCrud />} />
               <Route path="/usuariosCrud" element={<UsuariosCrud />} />
+              <Route path="/correosCrud" element={<CorreosCrud />} />
 
             </Route>
 
