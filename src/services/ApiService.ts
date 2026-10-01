@@ -620,6 +620,68 @@ export const ApiService = {
         }
     },
 
+    async getProduccionBySemana(id_semana: string): Promise<Produccion[]> {
+        try {
+            const response = await runGoogle<ApiResponse<Produccion[]>>('apiHandler', {
+                action: 'getProduccionBySemana',
+                id_semana: id_semana
+            });
+            if (!response.success) {
+                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
+            }
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getProduccionBySemana:', error);
+            throw error;
+        }
+    },
+    async getParosBySemana(id_semana: string): Promise<RegistroParo[]> {
+        try {
+            const response = await runGoogle<ApiResponse<RegistroParo[]>>('apiHandler', {
+                action: 'getParosBySemana',
+                id_semana: id_semana
+            });
+            if (!response.success) {
+                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
+            }
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getParosBySemana:', error);
+            throw error;
+        }  
+    },
+    async getProduccionesDiarias(fecha: string): Promise<Produccion[]> {
+        try {
+            const response = await runGoogle<ApiResponse<Produccion[]>>('apiHandler', {
+                action: 'getProduccionesDiarias',
+                fecha: fecha
+            });
+            if (!response.success) {
+                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
+            }
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getProduccionesDiarias:', error);
+            throw error;
+        }     
+    },
+    async getParosDiarios (fecha: string): Promise<RegistroParo[]> {
+        try {
+            const response = await runGoogle<ApiResponse<RegistroParo[]>>('apiHandler', {
+                action: 'getParosDiarios',
+                fecha: fecha
+            });
+            if (!response.success) {
+                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
+            }
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getParosDiarios:', error);
+            throw error;
+        }
+    },
+
+
     //=====================================================================
     // Insert
     //=====================================================================

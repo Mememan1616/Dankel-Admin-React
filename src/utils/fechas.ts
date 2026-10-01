@@ -14,3 +14,22 @@ export const parseFecha = (dateStr: string): number => {
   }
   return NaN;
 };
+
+export const formatearFechaISO = (fecha?: Date): string => {
+  const f = fecha || new Date();
+  const dia = String(f.getDate()).padStart(2, '0');
+  const mes = String(f.getMonth() + 1).padStart(2, '0');
+  return `${f.getFullYear()}-${mes}-${dia}`;
+};
+
+export const formatearFechaDMY = (fecha?: Date | string): string => {
+  if (typeof fecha === 'string') {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return '';
+    const [anio, mes, dia] = fecha.split('-');
+    return `${dia}/${mes}/${anio}`;
+  }
+  const f = fecha || new Date();
+  const dia = String(f.getDate()).padStart(2, '0');
+  const mes = String(f.getMonth() + 1).padStart(2, '0');
+  return `${dia}/${mes}/${f.getFullYear()}`;
+};

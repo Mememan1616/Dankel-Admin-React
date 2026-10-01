@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 
-import { Edit, Search, Trash2, Factory, Clock } from 'lucide-react';
+import { Edit, Search, Trash2, Factory, Clock, FileSpreadsheet } from 'lucide-react';
 import type { Produccion } from '../../../interfaces/produccion';
 import type { Maquina } from '../../../interfaces/maquinas';
 import type { Turno } from '../../../interfaces/turnos';
@@ -9,10 +9,12 @@ import type { Lote } from '../../../interfaces/lotes';
 import type { Producto } from '../../../interfaces/productos';
 import type { Usuario } from '../../../interfaces/usuarios';
 import { ApiService } from '../../../services/ApiService';
+import { useDatosPorSemana } from '../../../hooks/useDatosPorSemana';
+import { getSemanaMasReciente } from '../../../utils/semanas';
+import { exportarProduccion } from '../../../utils/exportarProduccion';
 import FormularioProduccion from './formularioProduccion';
 
 export default function ProduccionCrud() {
-    const [producciones, setProducciones] = useState<Produccion[]>([]);
     const [maquinas, setMaquinas] = useState<Maquina[]>([]);
     const [turnos, setTurnos] = useState<Turno[]>([]);
     const [semanas, setSemanas] = useState<Semana[]>([]);
@@ -26,6 +28,14 @@ export default function ProduccionCrud() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroMaquina, setFiltroMaquina] = useState('todas');
+    const [filtroSemana, setFiltroSemana] = useState('');
+    const [isExporting, setIsExporting] = useState(false);
+
+    const { produccion: producciones, loading, recargar } = useDatosPorSemana({
+        semanas,
+        seleccionadas: filtroSemana === 'todas' ? [] : [filtroSemana],
+        incluir: { produccion: true, paros: false }
+    });
 
     useEffect(() => {
         cargarDatos();
@@ -33,8 +43,7 @@ export default function ProduccionCrud() {
 
     const cargarDatos = async () => {
         try {
-            const [prodData, maqData, turnosData, semanasData, lotesData, prodCatalogData, usersData] = await Promise.all([
-                ApiService.getAllProduccion(),
+            const [maqData, turnosData, semanasData, lotesData, prodCatalogData, usersData] = await Promise.all([
                 ApiService.getAllMaquinas(),
                 ApiService.getAllTurnos(),
                 ApiService.getAllSemanas(),
@@ -43,21 +52,25 @@ export default function ProduccionCrud() {
                 ApiService.getAllUsers()
             ]);
 
-            const produccionesArray = Array.isArray(prodData) ? prodData : Object.keys(prodData || {}).map(key => ({
-                id_produccion: key,
-                ...(prodData as any)[key]
-            }));
-
-            setProducciones(produccionesArray);
             setMaquinas(maqData || []);
             setTurnos(turnosData || []);
             setSemanas(semanasData || []);
             setLotes(lotesData || []);
             setProductos(prodCatalogData || []);
             setUsuarios(usersData || []);
+
+            const listaSemanas = semanasData || [];
+            if (listaSemanas.length > 0) {
+                setFiltroSemana(getSemanaMasReciente(listaSemanas));
+            }
         } catch (error) {
             console.error("Error al cargar producción:", error);
         }
+    };
+
+    const refrescar = () => {
+        cargarDatos();
+        recargar();
     };
 
     const MostrarFormulario = (action: string, prod?: Produccion) => {
@@ -82,6 +95,18 @@ export default function ProduccionCrud() {
         });
     }, [producciones, searchTerm, filtroMaquina, maquinas]);
 
+    const handleExport = async () => {
+        if (filtradas.length === 0 || isExporting) return;
+        setIsExporting(true);
+        try {
+            await exportarProduccion(filtradas as Produccion[], semanas, maquinas);
+        } catch (error) {
+            console.error('Error al exportar producción:', error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6" >
@@ -90,6 +115,26 @@ export default function ProduccionCrud() {
                     <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
                         Audita y corrige los tiempos o piezas declaradas por los operadores.
                     </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={handleExport}
+                        disabled={isExporting || filtradas.length === 0}
+                        title={
+                            filtradas.length === 0
+                                ? 'No hay registros para exportar con los filtros actuales'
+                                : `Exportar ${filtradas.length} registros a Excel`
+                        }
+                        className="px-4 py-2 bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg shadow-sm font-medium text-sm transition-all flex items-center gap-2 w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-slate-800"
+                    >
+                        {isExporting ? (
+                            <Clock className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <FileSpreadsheet className="w-4 h-4" />
+                        )}
+                        {isExporting ? 'Generando...' : 'Exportar a Excel'}
+                    </button>
                 </div>
             </div>
 
@@ -113,6 +158,17 @@ export default function ProduccionCrud() {
                     >
                         <option value="todas">Todas las Máquinas</option>
                         {maquinas.map(m => <option key={m.id_maquina} value={m.id_maquina}>{m.maquina}</option>)}
+                    </select>
+
+                    <select
+                        value={filtroSemana}
+                        onChange={(e) => setFiltroSemana(e.target.value)}
+                        className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 text-slate-700 dark:text-slate-200"
+                    >
+                        <option value="todas">Todas las Semanas</option>
+                        {semanas.map(s => (
+                            <option key={s.id_semana} value={s.id_semana}>{s.descripcion || s.id_semana}</option>
+                        ))}
                     </select>
                 </div>
 
@@ -198,8 +254,8 @@ export default function ProduccionCrud() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                                            No se encontraron registros de producción.
+                                        <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                                            {loading ? 'Cargando registros de producción...' : 'No se encontraron registros de producción.'}
                                         </td>
                                     </tr>
                                 )}
@@ -214,7 +270,7 @@ export default function ProduccionCrud() {
                 onClose={() => setIsModalOpen(false)}
                 action={action}
                 produccion={selectedProd}
-                refreshData={cargarDatos}
+                refreshData={refrescar}
                 maquinas={maquinas}
                 turnos={turnos}
                 semanas={semanas}

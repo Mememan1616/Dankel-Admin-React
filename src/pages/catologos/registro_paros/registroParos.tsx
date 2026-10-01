@@ -1,7 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { RegistroParo } from '../../../interfaces/produccion';
 import type { Paro } from '../../../interfaces/paros';
+import type { Maquina } from '../../../interfaces/maquinas';
+import type { Semana } from '../../../interfaces/semanas';
 import { ApiService } from '../../../services/ApiService';
+import { useDatosPorSemana } from '../../../hooks/useDatosPorSemana';
+import { getSemanaMasReciente, getSemanasOrdenadas, getUltimasSemanas } from '../../../utils/semanas';
+import { exportarParos } from '../../../utils/exportarParos';
 import {
     Search,
     Filter,
@@ -13,21 +18,28 @@ import {
 } from 'lucide-react';
 
 export default function RegistroParosCrud() {
-    const [registros, setRegistros] = useState<RegistroParo[]>([]);
     const [parosCatalogo, setParosCatalogo] = useState<Paro[]>([]);
+    const [semanas, setSemanas] = useState<Semana[]>([]);
+    const [maquinas, setMaquinas] = useState<Maquina[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [mostrarFiltros, setMostrarFiltros] = useState(false);
     const [filtroMaquina, setFiltroMaquina] = useState('todas');
-    const [filtroSemana, setFiltroSemana] = useState('todas');
+    const [filtroSemana, setFiltroSemana] = useState('');
     const [filtroTipo, setFiltroTipo] = useState('todos');
 
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
-    const [catExport, setCatExport] = useState({ semanas: [] as any[], maquinas: [] as any[] });
+    const [catExport, setCatExport] = useState({ semanas: [] as Semana[], maquinas: [] as Maquina[] });
     const [exportFiltros, setExportFiltros] = useState({
         semana: 'ultimas_4',
         maquina: 'todas',
         tipo: 'todos'
+    });
+
+    const { paros: registros, loading } = useDatosPorSemana({
+        semanas,
+        seleccionadas: filtroSemana === 'todas' ? [] : [filtroSemana],
+        incluir: { produccion: false, paros: true }
     });
 
     useEffect(() => {
@@ -36,12 +48,20 @@ export default function RegistroParosCrud() {
 
     const loadData = async () => {
         try {
-            const [registrosData, parosData] = await Promise.all([
-                ApiService.getAllRegistroParos(),
-                ApiService.getAllParos()
+            const [parosData, semanasData, maquinasData] = await Promise.all([
+                ApiService.getAllParos(),
+                ApiService.getAllSemanas(),
+                ApiService.getAllMaquinas()
             ]);
-            setRegistros(registrosData || []);
             setParosCatalogo(parosData || []);
+
+            const listaSemanas = semanasData || [];
+            setSemanas(listaSemanas);
+            setMaquinas(maquinasData || []);
+
+            if (listaSemanas.length > 0) {
+                setFiltroSemana(getSemanaMasReciente(listaSemanas));
+            }
         } catch (error) {
             console.error('Error cargando datos:', error);
         }
@@ -82,15 +102,12 @@ export default function RegistroParosCrud() {
     }, [registros, searchTerm, filtroMaquina, filtroSemana, filtroTipo, parosCatalogo]);
 
     const semanasOptions = useMemo(() => {
-        const semanaSet = new Set(registros.map(r => r.id_semana));
-        return Array.from(semanaSet).sort();
-    }, [registros]);
+        return getSemanasOrdenadas(semanas);
+    }, [semanas]);
 
     const maquinasOptions = useMemo(() => {
-        const maquinaSet = new Map<string, string>();
-        registros.forEach(r => maquinaSet.set(r.id_maquina, r.maquina));
-        return Array.from(maquinaSet.entries()).map(([id, nombre]) => ({ id, nombre }));
-    }, [registros]);
+        return maquinas;
+    }, [maquinas]);
 
     const openExportModal = async () => {
         setIsExportModalOpen(true);
@@ -111,19 +128,17 @@ export default function RegistroParosCrud() {
     const handleExport = async () => {
         setIsExporting(true);
         try {
-            let logs = [...registros];
+            const semanasExport = exportFiltros.semana === 'todas'
+                ? getSemanasOrdenadas(catExport.semanas).map(s => s.id_semana)
+                : exportFiltros.semana === 'ultimas_4'
+                    ? getUltimasSemanas(catExport.semanas, 4)
+                    : [exportFiltros.semana];
+
+            const porSemana = await Promise.all(semanasExport.map(id => ApiService.getParosBySemana(id)));
+            let logs = porSemana.flatMap(r => (Array.isArray(r) ? r : []));
 
             if (exportFiltros.maquina !== 'todas') {
                 logs = logs.filter(log => log.id_maquina === exportFiltros.maquina);
-            }
-
-            if (exportFiltros.semana !== 'todas') {
-                if (exportFiltros.semana === 'ultimas_4') {
-                    const last4Semanas = catExport.semanas.slice(-4).map(s => s.id_semana);
-                    logs = logs.filter(log => last4Semanas.includes(log.id_semana));
-                } else {
-                    logs = logs.filter(log => log.id_semana === exportFiltros.semana);
-                }
             }
 
             if (exportFiltros.tipo !== 'todos') {
@@ -148,34 +163,7 @@ export default function RegistroParosCrud() {
                 return;
             }
 
-            const headers = ['Fecha', 'Semana', 'Turno', 'Operador', 'Máquina', 'Lote', 'Motivo de Paro', 'Descripción', 'Hora Inicio', 'Hora Término'];
-            const csvRows = [headers.join(',')];
-
-            logs.forEach(row => {
-
-                const fecha = row.fecha_produccion || '';
-                const semana = row.id_semana || '';
-                const turno = row.turno || '';
-                const operador = row.operador || '';
-                const maquinaEncontrada = catExport.maquinas.find(m => m.id_maquina === row.id_maquina);
-                const maquina = maquinaEncontrada ? maquinaEncontrada.maquina : (row.maquina || 'Desconocida');
-                const motivo = `"${String(row.paro || '').replace(/"/g, '""')}"`;
-                const descripcion = `"${String(row.descripcion_paro || '').replace(/"/g, '""')}"`;
-                const inicio = row.hora_inicio || '';
-                const lote = row.lote || '';
-                const termino = row.hora_termino || 'En curso';
-                csvRows.push([fecha, semana, turno, operador, maquina, lote, motivo, descripcion, inicio, termino].join(','));
-            });
-
-            const csvString = '\uFEFF' + csvRows.join('\n');
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Registro_Paros_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            await exportarParos(logs as RegistroParo[], catExport.semanas, catExport.maquinas);
 
             setIsExportModalOpen(false);
         } catch (error) {
@@ -243,7 +231,7 @@ export default function RegistroParosCrud() {
                             >
                                 <option value="todas">Todas</option>
                                 {maquinasOptions.map(m => (
-                                    <option key={m.id} value={m.id}>{m.nombre}</option>
+                                    <option key={m.id_maquina} value={m.id_maquina}>{m.maquina}</option>
                                 ))}
                             </select>
                         </div>
@@ -256,7 +244,7 @@ export default function RegistroParosCrud() {
                             >
                                 <option value="todas">Todas</option>
                                 {semanasOptions.map(s => (
-                                    <option key={s} value={s}>{s}</option>
+                                    <option key={s.id_semana} value={s.id_semana}>{s.descripcion || s.id_semana}</option>
                                 ))}
                             </select>
                         </div>
@@ -295,7 +283,9 @@ export default function RegistroParosCrud() {
                                     <td colSpan={8} className="px-6 py-12 text-center">
                                         <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
                                             <AlertCircle className="w-8 h-8" />
-                                            <p className="text-sm font-medium">No se encontraron registros</p>
+                                            <p className="text-sm font-medium">
+                                                {loading ? 'Cargando registros...' : 'No se encontraron registros'}
+                                            </p>
                                             <p className="text-xs">Intentá ajustar los filtros o la búsqueda.</p>
                                         </div>
                                     </td>

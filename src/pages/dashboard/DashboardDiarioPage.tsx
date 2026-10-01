@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { ApiService } from '../../services/ApiService';
+import { formatearFechaDMY, formatearFechaISO } from '../../utils/fechas';
 import { Calendar, Activity, Factory, TrendingUp, AlertCircle, RefreshCw, PieChart, X, Download, ClipboardList } from 'lucide-react';
 import type { Maquina } from '../../interfaces/maquinas';
 import type { Turno } from '../../interfaces/turnos';
@@ -245,8 +246,7 @@ const getTextColor = (val: number) => {
 
 export default function DashboardDiarioPage() {
   const [loading, setLoading] = useState(true);
-  const hoy = new Date().toISOString().split('T')[0];
-  const [fechaSeleccionada, setFechaSeleccionada] = useState(hoy);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(formatearFechaISO());
 
   const [produccion, setProduccion] = useState<any[]>([]);
   const [paros, setParos] = useState<any[]>([]);
@@ -260,29 +260,61 @@ export default function DashboardDiarioPage() {
   const [parosModalData, setParosModalData] = useState<any[]>([]);
   const [parosModalTurno, setParosModalTurno] = useState('');
 
-  useEffect(() => {
-    cargarDatos();
-  }, []);
+  const peticionActual = useRef(0);
 
-  const cargarDatos = async () => {
-    setLoading(true);
+  const cargarCatalogos = async () => {
     try {
-      const [prodData, parosData, maqData, turnosData] = await Promise.all([
-        ApiService.getAllProduccion(),
-        ApiService.getAllRegistroParos(),
+      const [maqData, turnosData] = await Promise.all([
         ApiService.getAllMaquinas(),
         ApiService.getAllTurnos(),
       ]);
-      setProduccion(prodData || []);
-      setParos(parosData || []);
       setMaquinas(maqData || []);
       setTurnos(turnosData || []);
     } catch (error) {
-      console.error("Error cargando datos para el Dashboard Diario:", error);
-    } finally {
-      setLoading(false);
+      console.error("Error cargando catálogos del Dashboard Diario:", error);
     }
   };
+
+  const cargarDatos = async (fecha: string) => {
+    const fechaDMY = formatearFechaDMY(fecha);
+    const miPeticion = ++peticionActual.current;
+
+    if (!fechaDMY) {
+      setProduccion([]);
+      setParos([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const [prodData, parosData] = await Promise.all([
+        ApiService.getProduccionesDiarias(fechaDMY),
+        ApiService.getParosDiarios(fechaDMY),
+      ]);
+      if (miPeticion !== peticionActual.current) return;
+      setProduccion(prodData || []);
+      setParos(parosData || []);
+    } catch (error) {
+      if (miPeticion !== peticionActual.current) return;
+      console.error("Error cargando datos para el Dashboard Diario:", error);
+    } finally {
+      if (miPeticion === peticionActual.current) setLoading(false);
+    }
+  };
+
+  const recargar = () => {
+    cargarCatalogos();
+    cargarDatos(fechaSeleccionada);
+  };
+
+  useEffect(() => {
+    cargarCatalogos();
+  }, []);
+
+  useEffect(() => {
+    cargarDatos(fechaSeleccionada);
+  }, [fechaSeleccionada]);
 
   const datosAgrupados = useMemo(() => {
     const prodDelDia = produccion.filter(p => normalizeDateStr(p.fecha_produccion || p.fecha) === fechaSeleccionada);
@@ -464,7 +496,7 @@ export default function DashboardDiarioPage() {
           </div>
 
           <button 
-            onClick={cargarDatos}
+            onClick={recargar}
             className="self-end sm:self-auto bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 p-2.5 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
             title="Recargar datos"
           >

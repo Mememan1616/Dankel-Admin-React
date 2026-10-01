@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { ApiService } from '../../services/ApiService';
+import { useDatosPorSemana } from '../../hooks/useDatosPorSemana';
+import { getSemanaMasReciente } from '../../utils/semanas';
 import {
   Activity,
   CheckCircle2,
@@ -83,8 +85,6 @@ const MultiSelectDropdown = ({ title, options, selectedValues, onChange }: any) 
 export default function Dashboard2Page() {
   const [loading, setLoading] = useState(true);
 
-  const [produccion, setProduccion] = useState<any[]>([]);
-  const [paros, setParos] = useState<any[]>([]);
   const [maquinas, setMaquinas] = useState<Maquina[]>([]);
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [semanas, setSemanas] = useState<Semana[]>([]);
@@ -96,62 +96,48 @@ export default function Dashboard2Page() {
 
   const [filtroMaquina, setFiltroMaquina] = useState('todas');
 
+  const { produccion, paros, loading: loadingDatos } = useDatosPorSemana({
+    semanas,
+    seleccionadas: filtrosSemanas
+  });
+
   useEffect(() => {
     setFiltrosLotes([]);
   }, [filtroMaquina]);
 
   useEffect(() => {
+    setFiltrosLotes([]);
+  }, [filtrosSemanas]);
+
+  useEffect(() => {
     cargarDatos();
   }, []);
 
-  const cargarDatos = async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
+  const cargarDatos = async () => {
+    setLoading(true);
     try {
-      const [prodData, parosData, maqData, turnosData, semData, lotesData] = await Promise.all([
-        ApiService.getAllProduccion(),
-        ApiService.getAllRegistroParos(),
+      const [maqData, turnosData, semData, lotesData] = await Promise.all([
         ApiService.getAllMaquinas(),
         ApiService.getAllTurnos(),
         ApiService.getAllSemanas(),
         ApiService.getAllLotes()
       ]);
-      setProduccion(prodData || []);
-      setParos(parosData || []);
       setMaquinas(maqData || []);
       setTurnos(turnosData || []);
       setLotes(lotesData || []);
 
       const listaSemanas = semData || [];
-      setSemanas(listaSemanas);
 
       if (listaSemanas.length > 0) {
-        const semanasOrdenadas = [...listaSemanas].sort((a: any, b: any) => {
-          if (a.fecha_inicio && b.fecha_inicio) {
-            const parseDate = (dStr: string) => {
-              let parts = dStr.split('/');
-              if (parts.length !== 3) parts = dStr.split('-');
-              if (parts.length === 3) {
-                const isYearFirst = parts[0].length === 4;
-                const year = parseInt(isYearFirst ? parts[0] : parts[2], 10);
-                const month = parseInt(parts[1], 10) - 1;
-                const day = parseInt(isYearFirst ? parts[2] : parts[0], 10);
-                return new Date(year, month, day).getTime();
-              }
-              return 0;
-            };
-            return parseDate(b.fecha_inicio) - parseDate(a.fecha_inicio);
-          }
-          return String(b.id_semana).localeCompare(String(a.id_semana));
-        });
-
-        const idSemanaMasReciente = semanasOrdenadas[0].id_semana;
-        setFiltrosSemanas([idSemanaMasReciente]);
+        setFiltrosSemanas([getSemanaMasReciente(listaSemanas)]);
       }
+
+      setSemanas(listaSemanas);
 
     } catch (error) {
       console.error("Error cargando dashboard:", error);
     } finally {
-      if (!isBackground) setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -453,10 +439,15 @@ export default function Dashboard2Page() {
 
       let estado = 'inactiva';
 
-      const activeProd = allProdMaq.find(x => x.estatus === true || String(x.estatus).toLowerCase() === 'true');
-
       const hoy = new Date();
       const hoyStr = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
+
+      const activeProd = allProdMaq.find(x => {
+        const isActive = x.estatus === true || String(x.estatus).toLowerCase() === 'true';
+        if (!isActive) return false;
+        const fecha = String(x.fecha_produccion || x.fecha || '').trim();
+        return fecha === '' || fecha === hoyStr;
+      });
 
       const activeParo = allParosMaq.find(x => {
         const isActive = x.estatus === true || String(x.estatus).toLowerCase() === 'true';
@@ -697,7 +688,7 @@ export default function Dashboard2Page() {
     return <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 border-2 border-slate-400 dark:border-slate-500 m-0.5"></div>;
   };
 
-  if (loading) return (
+  if (loading || loadingDatos) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
     </div>

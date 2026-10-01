@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ApiService } from '../../services/ApiService';
+import { useDatosPorSemana } from '../../hooks/useDatosPorSemana';
+import { getSemanaMasReciente } from '../../utils/semanas';
 import { Factory, TrendingUp, AlertCircle, RefreshCw, PieChart, Box } from 'lucide-react';
 import type { Maquina } from '../../interfaces/maquinas';
 import type { Semana } from '../../interfaces/semanas';
@@ -223,14 +225,17 @@ const getTextColor = (val: number) => {
 export default function DashboardLotePage() {
   const [loading, setLoading] = useState(true);
 
-  const [produccion, setProduccion] = useState<any[]>([]);
-  const [paros, setParos] = useState<any[]>([]);
   const [maquinas, setMaquinas] = useState<Maquina[]>([]);
   const [semanas, setSemanas] = useState<Semana[]>([]);
   const [lotes, setLotes] = useState<any[]>([]);
 
   const [filtroSemana, setFiltroSemana] = useState('');
   const [filtroMaquina, setFiltroMaquina] = useState('todas');
+
+  const { produccion, paros, loading: loadingDatos, recargar } = useDatosPorSemana({
+    semanas,
+    seleccionadas: [filtroSemana]
+  });
 
   useEffect(() => {
     cargarDatos();
@@ -239,49 +244,31 @@ export default function DashboardLotePage() {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [prodData, parosData, maqData, semData, lotesData] = await Promise.all([
-        ApiService.getAllProduccion(),
-        ApiService.getAllRegistroParos(),
+      const [maqData, semData, lotesData] = await Promise.all([
         ApiService.getAllMaquinas(),
         ApiService.getAllSemanas(),
         ApiService.getAllLotes(),
       ]);
-      setProduccion(prodData || []);
-      setParos(parosData || []);
       setMaquinas(maqData || []);
       setLotes(lotesData || []);
       
       const listaSemanas = semData || [];
-      setSemanas(listaSemanas);
-      
-      if (listaSemanas.length > 0) {
-        const semanasOrdenadas = [...listaSemanas].sort((a: any, b: any) => {
-          if (a.fecha_inicio && b.fecha_inicio) {
-            const parseDate = (dStr: string) => {
-              let parts = dStr.split('/');
-              if (parts.length !== 3) parts = dStr.split('-');
-              if (parts.length === 3) {
-                const isYearFirst = parts[0].length === 4;
-                const year = parseInt(isYearFirst ? parts[0] : parts[2], 10);
-                const month = parseInt(parts[1], 10) - 1;
-                const day = parseInt(isYearFirst ? parts[2] : parts[0], 10);
-                return new Date(year, month, day).getTime();
-              }
-              return 0;
-            };
-            return parseDate(b.fecha_inicio) - parseDate(a.fecha_inicio);
-          }
-          return String(b.id_semana).localeCompare(String(a.id_semana));
-        });
 
-        const idSemanaMasReciente = semanasOrdenadas[0].id_semana;
-        setFiltroSemana(idSemanaMasReciente);
+      if (listaSemanas.length > 0) {
+        setFiltroSemana(getSemanaMasReciente(listaSemanas));
       }
+
+      setSemanas(listaSemanas);
     } catch (error) {
       console.error("Error cargando datos para el Dashboard Lote:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const recargarTodo = () => {
+    cargarDatos();
+    recargar();
   };
 
   const lotesDeSemana = useMemo(() => {
@@ -416,16 +403,16 @@ export default function DashboardLotePage() {
           </div>
 
           <button 
-            onClick={cargarDatos}
+            onClick={recargarTodo}
             className="self-end sm:self-auto bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 p-2.5 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
             title="Recargar datos"
           >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${loading || loadingDatos ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {loading ? (
+      {loading || loadingDatos ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
         </div>
