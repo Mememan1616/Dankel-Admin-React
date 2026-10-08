@@ -25,8 +25,9 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
   const [addCapSpeed, setAddCapSpeed] = useState('');
   const [addCapType, setAddCapType] = useState<TipoAlimentacion>('Automática');
 
-  // Guardamos un historial de los IDs que el usuario quita para borrarlos al final de la BD
-  const [relacionesAEliminar, setRelacionesAEliminar] = useState<string[]>([]);
+  // Estado para controlar eliminaciones inmediatas en curso
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [capacidadesLoading, setCapacidadesLoading] = useState(false);
 
   const defaultFormData: Maquina = {
     id_maquina: '',
@@ -59,16 +60,48 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
 
   useEffect(() => {
     if (isOpen) {
-      if (maquina) {
-        setFormData({ ...maquina, capacidades: maquina.capacidades || [] });
-      } else {
-        setFormData(defaultFormData);
-      }
       setAddCapProd('');
       setAddCapSpeed('');
-      setRelacionesAEliminar([]); // Resetear cola de eliminados
+      setDeletingIds(new Set());
+
+      const inicializar = async () => {
+        if (maquina && action === 'Editar') {
+          setCapacidadesLoading(true);
+          try {
+            const caps = await ApiService.getProductosByMaquina(maquina.id_maquina);
+            const capacidadesNormalizadas = (caps || [])
+              .filter((c: any) => c.estatus !== false)
+              .map((c: any) => ({
+                ...c,
+                id_produccionMaqinaxProducto:
+                  (c as any).id_produccionMaqinaxProducto ||
+                  (c as any).id_relacion ||
+                  (c as any).id ||
+                  (c as any).clave,
+              }));
+            setFormData({
+              ...maquina,
+              capacidades: capacidadesNormalizadas,
+            });
+          } catch (error) {
+            console.error('Error al cargar capacidades de la máquina:', error);
+            // SIN fallback a data muerta: vacío para no falsear datos
+            setFormData({
+              ...maquina,
+              capacidades: [],
+            });
+          } finally {
+            setCapacidadesLoading(false);
+          }
+        } else {
+          // Crear
+          setFormData({ ...defaultFormData });
+        }
+      };
+
+      inicializar();
     }
-  }, [isOpen, maquina]);
+  }, [isOpen, maquina, action]);
 
   useEffect(() => {
     if (isOpen && productosDisponibles.length > 0) {
@@ -115,7 +148,8 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
       id_producto: prodInfo?.id_producto || '',
       producto: addCapProd,
       velocidad: speed,
-      tipo: addCapType
+      tipo: addCapType,
+      estatus: true
     };
 
     setFormData(prev => ({
@@ -125,23 +159,48 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
     setAddCapSpeed('');
   };
 
-  const handleRemoveCapacity = (productName: string, id_produccion_productoxmaquina?: string) => {
-    // 🔥 DEBUG preventivo: Verificamos si el ID llega correctamente desde la BD
-    console.log("Intentando remover:", productName, "| ID recibido de la BD:", id_produccion_productoxmaquina);
+  const handleRemoveCapacity = async (
+    productName: string,
+    id_produccionMaqinaxProducto?: string
+  ) => {
+    console.log("Eliminando producto:", productName);
+    console.log("id_produccionMaqinaxProducto:", id_produccionMaqinaxProducto);
+    // Si TIENE ID → eliminar INMEDIATAMENTE en BD al darle a la X
+    if (id_produccionMaqinaxProducto) {
+      const id = id_produccionMaqinaxProducto;
+      setDeletingIds((prev) => new Set(prev).add(id));
+      console.log("Eliminando id_produccionMaqinaxProducto:", id);
+      try {
+        await ApiService.deleteProduccionProductoMaquina(id);
 
-    // Si tenía un id_produccion_productoxmaquina válido, se registra para enviarse al backend
-    if (id_produccion_productoxmaquina) {
-      setRelacionesAEliminar(prev => [...prev, id_produccion_productoxmaquina]);
-      console.log("Añadido a la cola de eliminación:", id_produccion_productoxmaquina);
-    } else {
-      console.warn("⚠️ ALERTA: id_produccion_productoxmaquina es undefined. No se enviará ninguna orden de eliminación al servidor.");
+        // Quito del formulario SOLO si el borrado en BD fue exitoso
+        setFormData((prev) => ({
+          ...prev,
+          capacidades: (prev.capacidades || []).filter(
+            (c) => c.producto !== productName
+          ),
+        }));
+      } catch (error) {
+        console.error("Error al eliminar relación máquina-producto:", error);
+        alert("No se pudo eliminar la relación. Inténtalo de nuevo.");
+        // NO quitamos de formData → rollback (se mantiene en UI)
+      } finally {
+        setDeletingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+      return;
     }
 
-    setFormData(prev => ({
+    // Si NO tiene ID (capacidad recién añadida, aún no guardada) → solo quitar de UI
+    setFormData((prev) => ({
       ...prev,
-      capacidades: (prev.capacidades || []).filter(c => c.producto !== productName)
+      capacidades: (prev.capacidades || []).filter((c) => c.producto !== productName),
     }));
   };
+
 
   // --- GUARDADO A LAS DOS TABLAS ---
   const handleSubmit = async (e: React.FormEvent) => {
@@ -165,31 +224,30 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
 
     try {
       let finalMachineId = formData.id_maquina;
-
+      const { capacidades, ...maquinaData } = formData;
       // 1. Crear o Actualizar la Máquina Principal
       if (action === 'Crear') {
-        const res = await ApiService.insertMaquina(formData);
-        if (!res.success) throw new Error("Error creando máquina");
-        finalMachineId = (res.result as any)?.clave || (res.result as any)?.id || formData.id_maquina;
+        
+        const res = await ApiService.insertMaquina(maquinaData);
+        
+        if (!res.success) throw new Error('Ocurrio un error al crear la maquina.');
+        finalMachineId = res.result?.name || '';
+        console.log('Maquina creada con ID:', finalMachineId);
       } else {
-        await ApiService.updateMaquina(formData);
+        await ApiService.updateMaquina(maquinaData);
       }
 
-      // 2. Ejecutar Eliminaciones en la Tabla Intermedia
-      console.log("Procediendo a eliminar de la BD los siguientes IDs:", relacionesAEliminar);
-      for (const id_ppm of relacionesAEliminar) {
-        await ApiService.deleteProduccionProductoMaquina(id_ppm);
-      }
-
-      // 3. Ejecutar Inserciones en la Tabla Intermedia (Solo las nuevas)
-      const nuevasRelaciones = (formData.capacidades || []).filter(c => !(c as any).id_produccion_productoxmaquina);
+      // 2. Ejecutar Inserciones en la Tabla Intermedia (Solo las nuevas)
+      const nuevasRelaciones = (formData.capacidades || []).filter(c => !(c as any).id_produccionMaqinaxProducto);
       for (const cap of nuevasRelaciones) {
         await ApiService.insertProduccionProductoMaquina({
           id_maquina: finalMachineId,
           id_producto: cap.id_producto,
           producto: cap.producto,
           velocidad: cap.velocidad,
-          tipo: cap.tipo
+          tipo: cap.tipo,
+          estatus: true,
+          id_produccionMaqinaxProducto: ''
         });
       }
 
@@ -273,42 +331,52 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
                 </div>
               </div>
 
-              <div className="bg-slate-50 dark:bg-[#111623] p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                <div className="md:col-span-5">
-                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Producto</label>
-                  <select
-                    value={addCapProd}
-                    onChange={(e) => setAddCapProd(e.target.value)}
-                    disabled={availableProducts.length === 0}
-                    className="w-full bg-white dark:bg-[#1c2335] text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/60 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500 disabled:opacity-50"
-                  >
-                    {availableProducts.length === 0 ? <option value="">Todos asignados</option> : availableProducts.map(p => <option key={p.id_producto} value={p.producto}>{p.producto}</option>)}
-                  </select>
-                </div>
-                <div className="md:col-span-3">
-                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Vel. (pzs x hr)</label>
-                  <input type="number" value={addCapSpeed} onChange={(e) => setAddCapSpeed(e.target.value)}
-                    className="w-full bg-white dark:bg-[#1c2335] text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/60 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Tipo</label>
-                  <select value={addCapType} onChange={(e) => setAddCapType(e.target.value as TipoAlimentacion)}
-                    className="w-full bg-white dark:bg-[#1c2335] text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/60 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500"
-                  >
-                    <option value="Automática">Automática</option>
-                    <option value="Manual">Manual</option>
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <button type="button" onClick={handleAddCapacity} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 px-2 rounded-lg transition-colors">
-                    + Insertar
-                  </button>
-                </div>
-              </div>
+               <div className="bg-slate-50 dark:bg-[#111623] p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                 <div className="md:col-span-5">
+                   <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Producto</label>
+                   <select
+                     value={addCapProd}
+                     onChange={(e) => setAddCapProd(e.target.value)}
+                     disabled={capacidadesLoading || availableProducts.length === 0}
+                     className="w-full bg-white dark:bg-[#1c2335] text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/60 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500 disabled:opacity-50"
+                   >
+                     {availableProducts.length === 0 ? <option value="">Todos asignados</option> : availableProducts.map(p => <option key={p.id_producto} value={p.producto}>{p.producto}</option>)}
+                   </select>
+                 </div>
+                 <div className="md:col-span-3">
+                   <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Vel. (pzs x hr)</label>
+                   <input type="number" value={addCapSpeed} onChange={(e) => setAddCapSpeed(e.target.value)}
+                     disabled={capacidadesLoading}
+                     className="w-full bg-white dark:bg-[#1c2335] text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/60 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500 disabled:opacity-50"
+                   />
+                 </div>
+                 <div className="md:col-span-2">
+                   <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase">Tipo</label>
+                   <select value={addCapType} onChange={(e) => setAddCapType(e.target.value as TipoAlimentacion)}
+                     disabled={capacidadesLoading}
+                     className="w-full bg-white dark:bg-[#1c2335] text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/60 rounded-lg py-2 px-3 text-xs outline-none focus:border-indigo-500 disabled:opacity-50"
+                   >
+                     <option value="Automática">Automática</option>
+                     <option value="Manual">Manual</option>
+                   </select>
+                 </div>
+                 <div className="md:col-span-2">
+                   <button type="button" onClick={handleAddCapacity} disabled={capacidadesLoading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 px-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                     + Insertar
+                   </button>
+                 </div>
+               </div>
 
-              {/* Tabla de Rendimientos Asignados */}
-              <div className="mt-4 border border-slate-200 dark:border-slate-800/60 rounded-xl overflow-hidden bg-white dark:bg-[#111623]">
+
+               {capacidadesLoading && (
+                 <div className="text-xs text-slate-500 dark:text-slate-400 italic mt-3">
+                   Cargando capacidades...
+                 </div>
+               )}
+
+               {/* Tabla de Rendimientos Asignados */}
+               <div className="mt-4 border border-slate-200 dark:border-slate-800/60 rounded-xl overflow-hidden bg-white dark:bg-[#111623]">
+
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/40 text-[10px] text-slate-500 uppercase font-bold">
@@ -332,9 +400,21 @@ export default function FormularioMaquina({ isOpen, onClose, title, maquina, act
                         </td>
                         <td className="py-2.5 px-4 text-center">
                           {/* Pasamos id_relacion para asegurar que se registre el borrado */}
-                          <button type="button" onClick={() => handleRemoveCapacity(cap.producto, (cap as any).id_produccion_productoxmaquina)} className="text-rose-500 hover:text-rose-600 p-1">
-                            <X className="w-4 h-4" />
-                          </button>
+                           <button
+                             type="button"
+                             onClick={() => handleRemoveCapacity(cap.producto, (cap as any).id_produccionMaqinaxProducto)}
+                             disabled={
+                               capacidadesLoading ||
+                               ((cap as any).id_produccionMaqinaxProducto
+                                 ? deletingIds.has((cap as any).id_produccionMaqinaxProducto)
+                                 : false)
+                             }
+                             title={(cap as any).id_produccionMaqinaxProducto && deletingIds.has((cap as any).id_produccionMaqinaxProducto) ? "Eliminando..." : "Eliminar"}
+                             className="text-rose-500 hover:text-rose-600 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                           >
+                             <X className="w-4 h-4" />
+                           </button>
+
                         </td>
                       </tr>
                     ))}

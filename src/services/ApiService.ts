@@ -364,10 +364,10 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                     success: true,
                     status: 200,
                     result: [
-                        { id_produccion_productoxmaquina: "ppm101", id_maquina: "maquina1", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 500, tipo: "Automática", estatus: true },
-                        { id_produccion_productoxmaquina: "ppm102", id_maquina: "maquina2", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 300, tipo: "Manual", estatus: true },
-                        { id_produccion_productoxmaquina: "ppm103", id_maquina: "maquina1", id_producto: "PROD-102", producto: "Aceite Lubricante Sintético", velocidad: 200, tipo: "Automática", estatus: true },
-                        { id_produccion_productoxmaquina: "ppm104", id_maquina: "maquina2", id_producto: "PROD-103", producto: "Banda Transportadora", velocidad: 400, tipo: "Automática", estatus: true },
+                        {id_produccionMaqinaxProducto: "ppm101", id_maquina: "maquina1", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 500, tipo: "Automática", estatus: true },
+                        {id_produccionMaqinaxProducto: "ppm102", id_maquina: "maquina2", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 300, tipo: "Manual", estatus: true },
+                        { id_produccionMaqinaxProducto: "ppm103", id_maquina: "maquina1", id_producto: "PROD-102", producto: "Aceite Lubricante Sintético", velocidad: 200, tipo: "Automática", estatus: true },
+                        { id_produccionMaqinaxProducto: "ppm104", id_maquina: "maquina2", id_producto: "PROD-103", producto: "Banda Transportadora", velocidad: 400, tipo: "Automática", estatus: true },
                     ] as ProduccionProductoMaquina[],
                     error: null
                 } as unknown as T);
@@ -681,6 +681,17 @@ export const ApiService = {
         }
     },
 
+    async getProductosByMaquina(id_maquina: string): Promise<ProduccionProductoMaquina[]> {
+        try {
+            const response = await runGoogle<ApiResponse<ProduccionProductoMaquina[]>>('apiHandler', { action: 'getProductosByMaquina', id_maquina: id_maquina });
+            // 👇 AQUÍ ESTÁ EL CAMBIO 👇
+            if (!response.success) throw new Error(response.error || 'Error desconocido en Producción');
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getProductosByMaquina:', error);
+            throw error;
+        }
+    },
 
     //=====================================================================
     // Insert
@@ -737,9 +748,9 @@ export const ApiService = {
         }
     },
 
-    async insertMaquina(maquina: Maquina): Promise<ApiResponse<{ clave: string }>> {
+    async insertMaquina(maquina: Maquina): Promise<ApiResponse<{ name: string }>> {
         try {
-            const response = await runGoogle<ApiResponse<{ clave: string }>>('apiHandler', {
+            const response = await runGoogle<ApiResponse<{ name: string }>>('apiHandler', {
                 action: 'insertMaquina',
                 maquina: maquina
             });
@@ -1113,6 +1124,7 @@ export const ApiService = {
         }
     },
 
+    
 
     // 👇 Solo estas 3 funciones van en tu ApiService.ts de React 👇
 
@@ -1172,11 +1184,12 @@ export const ApiService = {
     async deleteCorreos(id_correo: string): Promise<ApiResponse<any>> {
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteCorreos', id_correo });
     },
-    async insertProduccionProductoMaquina(data: Omit<ProduccionProductoMaquina, 'id_produccion_productoxmaquina' | 'estatus'>): Promise<ApiResponse<any>> {
+    async insertProduccionProductoMaquina(data: ProduccionProductoMaquina): Promise<ApiResponse<any>> {
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'insertProduccionProductoMaquina', data });
     },
 
     async deleteProduccionProductoMaquina(id_produccion_productoxmaquina: string): Promise<ApiResponse<any>> {
+        console.log("eliminando", id_produccion_productoxmaquina);
         return await runGoogle<ApiResponse<any>>('apiHandler', { action: 'deleteProduccionProductoMaquina', id_produccion_productoxmaquina });
     },
 

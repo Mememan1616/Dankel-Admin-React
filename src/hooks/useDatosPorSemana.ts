@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ApiService } from '../services/ApiService';
 import type { Semana } from '../interfaces/semanas';
+import type {RegistroParo} from '../interfaces/produccion';
 
 const UMBRAL_AVISO_SEMANAS = 12;
 

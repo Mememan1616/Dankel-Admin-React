@@ -177,6 +177,7 @@ export default function ProduccionCrud() {
                         <table className="w-full text-left border-collapse whitespace-nowrap min-w-full">
                             <thead>
                                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                                    <th className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">ID Producción</th>
                                     <th className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Semana / Lote</th>
                                     <th className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Máquina</th>
                                     <th className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Operador</th>
@@ -190,7 +191,10 @@ export default function ProduccionCrud() {
                             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                                 {filtradas.length > 0 ? (
                                     filtradas.map((prod, index) => (
-                                        <tr key={(prod as any).id || index} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                        <tr key={prod.id_produccion || index} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                            <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">
+                                                {prod.id_produccion || '-'}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-slate-900 dark:text-white">{prod.id_semana}</span>
@@ -254,7 +258,7 @@ export default function ProduccionCrud() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                                        <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
                                             {loading ? 'Cargando registros de producción...' : 'No se encontraron registros de producción.'}
                                         </td>
                                     </tr>

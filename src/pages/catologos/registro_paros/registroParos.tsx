@@ -267,6 +267,7 @@ export default function RegistroParosCrud() {
                     <table className="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
                             <tr>
+                                <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">ID Registro</th>
                                 <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Fecha</th>
                                 <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Máquina</th>
                                 <th className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">Turno</th>
@@ -280,7 +281,7 @@ export default function RegistroParosCrud() {
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                             {registrosFiltrados.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-12 text-center">
+                                    <td colSpan={9} className="px-6 py-12 text-center">
                                         <div className="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
                                             <AlertCircle className="w-8 h-8" />
                                             <p className="text-sm font-medium">
@@ -295,6 +296,9 @@ export default function RegistroParosCrud() {
                                     const paroInfo = getParoInfo(reg.id_paro);
                                     return (
                                         <tr key={reg.id_registro_paro} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <td className="px-6 py-4 text-sm font-mono text-slate-500 dark:text-slate-400">
+                                                {reg.id_registro_paro || '-'}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <p className="text-sm text-slate-700 dark:text-slate-300">{reg.fecha_produccion || '-'}</p>
                                             </td>

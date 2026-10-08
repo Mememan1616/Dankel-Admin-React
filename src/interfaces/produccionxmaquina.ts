@@ -6,6 +6,6 @@ export interface ProduccionProductoMaquina {
   tipo: TipoAlimentacion;
   velocidad: number;
   producto: string;
-  id_produccion_productoxmaquina: string;
+  id_produccionMaqinaxProducto: string;
   estatus: boolean;
 }

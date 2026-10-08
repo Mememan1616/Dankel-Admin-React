@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Maquina } from '../../../interfaces/maquinas';
-import type { ProduccionProductoMaquina } from '../../../interfaces/produccionxmaquina';
 import { ApiService } from '../../../services/ApiService';
-import { Edit, Search, Filter, Settings, Plus, Zap } from 'lucide-react';
+import { Edit, Search, Filter, Settings, Plus } from 'lucide-react';
 import FormularioMaquina from './formularioMaquina';
 
 export default function MaquinasCrud() {
@@ -20,41 +19,11 @@ export default function MaquinasCrud() {
         cargarDatosCompletos();
     }, []);
 
-    // Traemos Máquinas y la Tabla Intermedia al mismo tiempo
+    // Traemos Máquinas
     const cargarDatosCompletos = async () => {
         try {
-            const [maquinasData, relacionesData] = await Promise.all([
-                ApiService.getAllMaquinas(),
-                ApiService.getAllProduccionProductoMaquina()
-            ]);
-
-            // Formatear relaciones asegurando que id_produccion_productoxmaquina exista
-            const relaciones: ProduccionProductoMaquina[] = Array.isArray(relacionesData)
-                ? relacionesData.map(r => ({
-                    ...r,
-                    // Normalizamos el campo ID por si el backend lo trae con otro nombre
-                    id_produccion_productoxmaquina: r.id_produccion_productoxmaquina || (r as any).id_relacion || (r as any).id || (r as any).clave,
-                }))
-                : Object.keys(relacionesData || {}).map(k => ({
-                    id_produccion_productoxmaquina: k,
-                    ...(relacionesData as any)[k],
-                } as ProduccionProductoMaquina));
-
-            // 🔥 DEBUG: Imprime el primer elemento de cada arreglo para ver la estructura real
-            console.log("Estructura de UNA Máquina:", maquinasData[0]);
-            console.log("Estructura de UNA Relación Procesada:", relaciones[0]);
-
-            // Cruzar datos: Asignar capacidades a su máquina correspondiente
-            const maquinasConCapacidad = (maquinasData || []).map(maq => {
-                // Convertimos ambos a String por si hay discrepancia de tipos y filtramos inactivos
-                const capacidadesAsignadas = relaciones.filter(r => 
-                    String(r.id_maquina) === String(maq.id_maquina) && r.estatus !== false
-                );
-                
-                return { ...maq, capacidades: capacidadesAsignadas };
-            });
-
-            setMaquinas(maquinasConCapacidad);
+            const maquinasData = await ApiService.getAllMaquinas();
+            setMaquinas(maquinasData || []);
         } catch (error) {
             console.error("Error al cargar máquinas:", error);
         }
@@ -140,15 +109,15 @@ export default function MaquinasCrud() {
                                 <tr className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                     <th className="px-6 py-4 font-bold">Máquina</th>
                                     <th className="px-6 py-4 font-bold">Línea</th>
-                                    <th className="px-6 py-4 font-bold">Productos Asociados</th>
-                                    <th className="px-6 py-4 font-bold text-center">Estatus</th>
+                                     <th className="px-6 py-4 font-bold text-center">Estatus</th>
+
                                     <th className="px-6 py-4 font-bold text-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                                 {maquinasFiltradas.length > 0 ? (
                                     maquinasFiltradas.map((maquina) => {
-                                        const capacidades = maquina.capacidades || [];
+                                        
                                         return (
                                         <tr key={maquina.id_maquina} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                             <td className="px-6 py-4">
@@ -167,27 +136,8 @@ export default function MaquinasCrud() {
                                                     {maquina.linea}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                {capacidades.length === 0 ? (
-                                                    <span className="text-xs text-slate-400 italic">No configurada</span>
-                                                ) : (
-                                                    <div className="flex flex-col gap-1.5">
-                                                        {capacidades.slice(0, 2).map((c, i) => (
-                                                            <div key={i} className="flex items-center text-xs gap-2">
-                                                                <Zap className="w-3 h-3 text-amber-500" />
-                                                                <span className="font-semibold text-slate-700 dark:text-slate-300">{c.producto}</span>
-                                                                <span className="text-slate-500 dark:text-slate-400 font-mono">({c.velocidad} p/h)</span>
-                                                            </div>
-                                                        ))}
-                                                        {capacidades.length > 2 && (
-                                                            <span className="text-[10px] text-indigo-500 font-bold ml-5">
-                                                                + {capacidades.length - 2} más...
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
+                                             <td className="px-6 py-4 text-center">
+
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${maquina.estatus ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                                                     {maquina.estatus ? 'ACTIVA' : 'INACTIVA'}
                                                 </span>
@@ -204,11 +154,12 @@ export default function MaquinasCrud() {
                                         </tr>
                                     )})
                                 ) : (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                                            No se encontraron máquinas.
-                                        </td>
-                                    </tr>
+                                     <tr>
+                                         <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                                             No se encontraron máquinas.
+                                         </td>
+                                     </tr>
+
                                 )}
                             </tbody>
                         </table>

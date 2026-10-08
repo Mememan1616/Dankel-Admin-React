@@ -5,6 +5,7 @@ export interface CapacidadMaquina {
   producto: string; 
   velocidad: number;
   tipo: TipoAlimentacion;
+  estatus: boolean;
 }
 
 export interface Maquina {
