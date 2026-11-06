@@ -10,6 +10,7 @@ export interface Lote {
     
     // 👇 NUEVO: Campos para la semana
     id_semana?: string;
+    id_turno?: string;
     
     maquinas: Maquina_Lote[];
 }
@@ -17,4 +18,9 @@ export interface Lote {
 export interface Maquina_Lote {
     id_maquina: string;
     estatus: boolean;
+}
+
+export interface Meta_lotes_semana{
+    lotes_totales: Number;
+    lotes_terminados: Number;
 }

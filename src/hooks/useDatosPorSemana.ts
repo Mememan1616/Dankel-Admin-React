@@ -1,17 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ApiService } from '../services/ApiService';
 import type { Semana } from '../interfaces/semanas';
-import type {RegistroParo} from '../interfaces/produccion';
+import type { RegistroProduccion, RegistroParoDashboard } from '../interfaces/dashboard';
 
 const UMBRAL_AVISO_SEMANAS = 12;
 
-const toArray = (data: unknown, idKey: string): Record<string, unknown>[] => {
-    if (Array.isArray(data)) return data as Record<string, unknown>[];
+const toArray = <T,>(data: unknown, idKey: string): T[] => {
+    if (Array.isArray(data)) return data as T[];
     if (!data || typeof data !== 'object') return [];
     return Object.entries(data).map(([clave, valor]) => {
-        const registro: Record<string, unknown> = { ...(valor as object) };
-        registro[idKey] = clave;
-        return registro;
+        const registro = { ...(valor as object), [idKey]: clave };
+        return registro as unknown as T;
     });
 };
 
@@ -23,8 +22,8 @@ interface Opciones {
 }
 
 export function useDatosPorSemana({ semanas, seleccionadas, pollingMs = 0, incluir }: Opciones) {
-    const [produccion, setProduccion] = useState<any[]>([]);
-    const [paros, setParos] = useState<any[]>([]);
+    const [produccion, setProduccion] = useState<RegistroProduccion[]>([]);
+    const [paros, setParos] = useState<RegistroParoDashboard[]>([]);
     const [loading, setLoading] = useState(false);
 
     const enVuelo = useRef(0);
@@ -68,11 +67,11 @@ export function useDatosPorSemana({ semanas, seleccionadas, pollingMs = 0, inclu
             const [listaProduccion, listaParos] = await Promise.all([
                 pedirProduccion
                     ? Promise.all(semanaIds.map(id => ApiService.getProduccionBySemana(id)))
-                        .then(res => res.flatMap(d => toArray(d, 'id_produccion')))
+                        .then(res => res.flatMap(d => toArray<RegistroProduccion>(d, 'id_produccion')))
                     : Promise.resolve([]),
                 pedirParos
                     ? Promise.all(semanaIds.map(id => ApiService.getParosBySemana(id)))
-                        .then(res => res.flatMap(d => toArray(d, 'id_registro_paro')))
+                        .then(res => res.flatMap(d => toArray<RegistroParoDashboard>(d, 'id_registro_paro')))
                     : Promise.resolve([])
             ]);
 

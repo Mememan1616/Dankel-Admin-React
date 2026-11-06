@@ -6,3 +6,7 @@ export interface Semana {
     numero_lotes: number;
     estatus: boolean;
 }
+
+export interface MetaLotes{
+    
+}

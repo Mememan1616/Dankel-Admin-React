@@ -235,6 +235,11 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
         return;
     }
 
+    if ((action === 'Crear' || action === 'Editar') && !formData.id_semana) {
+        alert('Debes seleccionar una semana para el lote.');
+        return;
+    }
+
     setIsLoading(true);
     
 
@@ -265,7 +270,7 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
       const response = await executeAction();
 
       if (response.success) {
-        if ((action === 'Crear' || action === 'Editar') && formData.id_semana) {
+        if (action === 'Crear' && formData.id_semana) {
           updateSemanaLotes(formData.id_semana).catch(() => {});
         }
         setShowSuccess(true);

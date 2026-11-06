@@ -17,9 +17,25 @@ import {
 import type { Maquina } from '../../interfaces/maquinas';
 import type { Turno } from '../../interfaces/turnos';
 import type { Semana } from '../../interfaces/semanas';
+import type { Lote } from '../../interfaces/lotes';
+import type {
+  MultiSelectProps,
+  Metricas,
+  ParetoItem,
+  FilaGeneral,
+  AvanceSemanal,
+  DatoLoteGrafica,
+  AcumuladoLote,
+  FilaRendimientoLote,
+  RegistroProduccion,
+  RegistroParoDashboard,
+  FiltrableRegistro,
+  MaquinaLoteInfo,
+  EstadoMaquina,
+} from '../../interfaces/dashboard';
 
 // --- COMPONENTE MULTI-SELECT PERSONALIZADO ---
-const MultiSelectDropdown = ({ title, options, selectedValues, onChange }: any) => {
+const MultiSelectDropdown = ({ title, options, selectedValues, onChange }: MultiSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -33,7 +49,7 @@ const MultiSelectDropdown = ({ title, options, selectedValues, onChange }: any) 
 
   const toggleOption = (id: string) => {
     if (selectedValues.includes(id)) {
-      onChange(selectedValues.filter((v: string) => v !== id));
+      onChange(selectedValues.filter((v) => v !== id));
     } else {
       onChange([...selectedValues, id]);
     }
@@ -65,7 +81,7 @@ const MultiSelectDropdown = ({ title, options, selectedValues, onChange }: any) 
             />
             <span className="ml-3 text-sm font-bold text-slate-700 dark:text-slate-200">Seleccionar Todos</span>
           </label>
-          {options.map((opt: any) => (
+          {options.map((opt) => (
             <label key={opt.id} className="flex items-center px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer transition-colors">
               <input
                 type="checkbox"
@@ -88,7 +104,7 @@ export default function Dashboard2Page() {
   const [maquinas, setMaquinas] = useState<Maquina[]>([]);
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [semanas, setSemanas] = useState<Semana[]>([]);
-  const [lotes, setLotes] = useState<any[]>([]);
+  const [lotes, setLotes] = useState<Lote[]>([]);
 
   const [filtrosSemanas, setFiltrosSemanas] = useState<string[]>([]);
   const [filtrosTurnos, setFiltrosTurnos] = useState<string[]>([]);
@@ -151,7 +167,7 @@ export default function Dashboard2Page() {
     return (d2.getTime() - d1.getTime()) / 3600000;
   };
 
-  const isFromMaquina = (item: any, maq: Maquina) => {
+  const isFromMaquina = (item: FiltrableRegistro, maq: Maquina) => {
     const mId = String(maq.id_maquina || '').trim().toLowerCase();
     const mName = String(maq.maquina || '').trim().toLowerCase();
 
@@ -161,7 +177,7 @@ export default function Dashboard2Page() {
     return itemId === mId || itemId === mName || itemName === mId || itemName === mName;
   };
 
-  const calcularMetricas = (prod: any[], parosLogs: any[], options?: { modo: 'LOTE' | 'TURNO', turnosActivos: Turno[] }) => {
+  const calcularMetricas = (prod: RegistroProduccion[], parosLogs: RegistroParoDashboard[], options?: { modo: 'LOTE' | 'TURNO', turnosActivos: Turno[] }): Metricas => {
     const modo = options?.modo || 'LOTE';
     const turnosActivos = options?.turnosActivos || [];
 
@@ -203,7 +219,7 @@ export default function Dashboard2Page() {
     let t_ausencia_min = 0;
 
     if (modo === 'LOTE') {
-      const loteMap: Record<string, any[]> = {};
+      const loteMap: Record<string, RegistroProduccion[]> = {};
       prod.forEach(p => {
         const key = String(p.lote || p.id_lote || '__sin_lote__');
         if (!loteMap[key]) loteMap[key] = [];
@@ -364,7 +380,7 @@ export default function Dashboard2Page() {
     };
   };
 
-  const applyFilters = (data: any[], type: 'prod' | 'paro' = 'prod', referenceProd: any[] = []) => {
+  const applyFilters = <T extends FiltrableRegistro>(data: T[], type: 'prod' | 'paro' = 'prod', referenceProd: FiltrableRegistro[] = []): T[] => {
     return data.filter(item => {
       let passSemana = filtrosSemanas.length === 0 || filtrosSemanas.some(fs => String(fs).trim() === String(item.id_semana || '').trim());
       let passTurno = filtrosTurnos.length === 0 || filtrosTurnos.some(ft => String(ft).trim() === String(item.id_turno || '').trim());
@@ -393,36 +409,8 @@ export default function Dashboard2Page() {
       return passSemana && passTurno && passLote;
     });
   };
-  /*
-  const parseDateTime = (dateStr: any, timeStr: any) => {
-    const tStr = String(timeStr || '00:00:00').trim();
-    const timeParts = tStr.split(':');
-    const h = parseInt(timeParts[0] || '0', 10);
-    const m = parseInt(timeParts[1] || '0', 10);
-    const s = parseInt(timeParts[2] || '0', 10);
 
-    const today = new Date();
-    const dStr = String(dateStr || '').trim();
-
-    if (!dStr || dStr === 'undefined' || dStr === 'null' || dStr === '') {
-      return new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, s).getTime() || 0;
-    }
-
-    let parts = dStr.split('/');
-    if (parts.length !== 3) parts = dStr.split('-'); 
-    if (parts.length === 3) {
-      const isYearFirst = parts[0].length === 4;
-      const year = parseInt(isYearFirst ? parts[0] : parts[2], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(isYearFirst ? parts[2] : parts[0], 10);
-      
-      return new Date(year, month, day, h, m, s).getTime() || 0;
-    }
-    
-    return new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m, s).getTime() || 0;
-  };*/
-
-  const datosGenerales = useMemo(() => {
+  const datosGenerales = useMemo<FilaGeneral[]>(() => {
     const p = applyFilters(produccion, 'prod');
     const pr = applyFilters(paros, 'paro', p);
 
@@ -437,7 +425,7 @@ export default function Dashboard2Page() {
       const allProdMaq = produccion.filter(x => isFromMaquina(x, maq));
       const allParosMaq = paros.filter(x => isFromMaquina(x, maq));
 
-      let estado = 'inactiva';
+      let estado: EstadoMaquina = 'inactiva';
 
       const hoy = new Date();
       const hoyStr = `${String(hoy.getDate()).padStart(2, '0')}/${String(hoy.getMonth() + 1).padStart(2, '0')}/${hoy.getFullYear()}`;
@@ -465,12 +453,12 @@ export default function Dashboard2Page() {
         estado = 'produciendo';
       }
 
-      return { maquina: maq.maquina, ...met, estado, nombreParo: activeParo?.paro || null };
+      return { maquina: maq.maquina, ...met, estado, nombreParo: activeParo?.paro || activeParo?.descripcion_paro || null };
     });
   }, [produccion, paros, filtrosSemanas, filtrosTurnos, filtrosLotes, maquinas, turnos]);
 
 
-  const metricasMaquina = useMemo(() => {
+  const metricasMaquina = useMemo<Metricas | null>(() => {
     if (filtroMaquina === 'todas') return null;
     const selectedMaq = maquinas.find(m => m.id_maquina === filtroMaquina);
     if (!selectedMaq) return null;
@@ -484,7 +472,7 @@ export default function Dashboard2Page() {
     return calcularMetricas(p, pr, { modo: modoCalculo, turnosActivos });
   }, [produccion, paros, filtrosSemanas, filtrosTurnos, filtrosLotes, filtroMaquina, turnos, maquinas]);
 
-  const parosOtros = useMemo(() => {
+  const parosOtros = useMemo<RegistroParoDashboard[]>(() => {
     const p = applyFilters(produccion, 'prod');
     const pr = applyFilters(paros, 'paro', p);
 
@@ -498,7 +486,7 @@ export default function Dashboard2Page() {
     return prFiltrada.filter(paroObj =>
       paroObj.estatus !== true && String(paroObj.id_paro || '').toUpperCase() === 'PAROG'
     ).sort((a, b) => {
-      const parseDate = (dStr: any) => {
+      const parseDate = (dStr?: string) => {
         if (!dStr) return 0;
         let parts = String(dStr).split('/');
         if (parts.length !== 3) parts = String(dStr).split('-');
@@ -515,7 +503,7 @@ export default function Dashboard2Page() {
     });
   }, [produccion, paros, filtroMaquina, filtrosSemanas, filtrosTurnos, filtrosLotes, maquinas]);
 
-  const datosLotes = useMemo(() => {
+  const datosLotes = useMemo<DatoLoteGrafica[]>(() => {
     let mList = filtroMaquina !== 'todas' ? maquinas.filter(m => m.id_maquina === filtroMaquina) : maquinas;
 
     return mList.map(maq => {
@@ -526,12 +514,12 @@ export default function Dashboard2Page() {
       let completados = 0;
       let pendientes = 0;
 
-      lotes.forEach(l => {
+      lotes.filter(l => l.estatus !== false && l.lote && String(l.lote).trim() !== '').forEach(l => {
         let pertenece = false;
         let estaCompletadoEnMaquina = false;
 
         if (Array.isArray(l.maquinas)) {
-          const maqEnLote = l.maquinas.find((mObj: any) => {
+          const maqEnLote = l.maquinas.find((mObj: MaquinaLoteInfo) => {
             const catId = String(mObj?.id_maquina || '').trim().toLowerCase();
             const catName = String(mObj?.maquina || '').trim().toLowerCase();
             return catId === mId || catId === mName || catName === mId || catName === mName;
@@ -578,19 +566,24 @@ export default function Dashboard2Page() {
     console.log('  → Data cruda para gráfica:', datosLotes);
   }
 
-  const avanceSemanal = useMemo(() => {
+  const avanceSemanal = useMemo<AvanceSemanal | null>(() => {
     if (filtrosSemanas.length !== 1) return null;
 
     const semanaId = filtrosSemanas[0];
     const semana = semanas.find(s => String(s.id_semana) === String(semanaId));
     if (!semana) return null;
 
-    const meta = Number(semana.numero_lotes) || 0;
+    const lotesSemana = lotes.filter(l =>
+      l.estatus !== false &&
+      String(l.id_semana) === String(semanaId) &&
+      l.lote && String(l.lote).trim() !== ''
+    );
 
-    const lotesSemana = lotes.filter(l => String(l.id_semana) === String(semanaId));
+    const meta = lotesSemana.length;
+
     const realizados = lotesSemana.filter(l => {
       if (!Array.isArray(l.maquinas) || l.maquinas.length === 0) return false;
-      return l.maquinas.every((m: any) =>
+      return l.maquinas.every((m: MaquinaLoteInfo) =>
         m.estatus === false || String(m.estatus).toLowerCase() === 'false'
       );
     }).length;
@@ -601,7 +594,7 @@ export default function Dashboard2Page() {
     return { meta, realizados, pendientes, porcentaje, semana: semana.descripcion };
   }, [lotes, semanas, filtrosSemanas]);
 
-  const tablaRendimientoLotes = useMemo(() => {
+  const tablaRendimientoLotes = useMemo<FilaRendimientoLote[]>(() => {
     const p = applyFilters(produccion, 'prod');
     const pr = applyFilters(paros, 'paro', p);
 
@@ -619,7 +612,7 @@ export default function Dashboard2Page() {
       })
       : pr;
 
-    const agrupados: Record<string, any> = {};
+    const agrupados: Record<string, AcumuladoLote> = {};
 
     pFiltrada.forEach(reg => {
       const loteKey = reg.lote || reg.id_lote || 'Sin Lote';
@@ -681,7 +674,7 @@ export default function Dashboard2Page() {
     return 'text-rose-600';
   };
 
-  const getStatusIcon = (estado: string) => {
+  const getStatusIcon = (estado: EstadoMaquina) => {
     if (estado === 'produciendo') return <CheckCircle2 className="w-6 h-6 text-emerald-500" />;
     if (estado === 'setup') return <AlertCircle className="w-6 h-6 text-amber-500" />;
     if (estado === 'paro') return <XCircle className="w-6 h-6 text-rose-500" />;
@@ -709,7 +702,7 @@ export default function Dashboard2Page() {
   const lotesUnicosIds = [...new Set(produccionParaLotes.map(p => p.lote || p.id_lote).filter(Boolean))];
   const opcionesLotes = lotesUnicosIds.map(l => ({ id: String(l), label: `Lote: ${l}` }));
 
-  const BarChartAvanceSemanal = ({ data }: { data: { meta: number; realizados: number; pendientes: number; porcentaje: number; semana: string } }) => {
+  const BarChartAvanceSemanal = ({ data }: { data: AvanceSemanal }) => {
     const maxVal = Math.max(data.meta, data.realizados, 1);
     const pRealizados = (data.realizados / maxVal) * 100;
     const pMeta = (data.meta / maxVal) * 100;
@@ -721,7 +714,7 @@ export default function Dashboard2Page() {
           <div>
             <h3 className="text-xl font-extrabold text-slate-800 dark:text-white">Avance de Lotes por Semana</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-              {data.semana} • <span className="text-indigo-500 font-bold">{data.meta} Planeados</span>
+              {data.semana} • <span className="text-indigo-500 font-bold">{data.meta} Dados de alta</span>
             </p>
           </div>
         </div>
@@ -736,7 +729,7 @@ export default function Dashboard2Page() {
               <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-slate-950 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap pointer-events-none">
                 <div className="font-extrabold text-white uppercase mb-1">{data.semana}</div>
                 <div>Lotes Realizados: <span className="font-bold text-indigo-400">{data.realizados}</span></div>
-                <div>Lotes Planeados: <span className="font-bold text-slate-300">{data.meta}</span></div>
+                <div>Lotes Dados de alta: <span className="font-bold text-slate-300">{data.meta}</span></div>
                 <div className="mt-1 font-bold text-emerald-400 border-t border-slate-700 pt-1">
                   {data.porcentaje}% completado
                 </div>
@@ -767,7 +760,7 @@ export default function Dashboard2Page() {
             <div className="w-5 h-5 bg-indigo-500 rounded shadow-sm"></div> Realizados ({data.realizados})
           </div>
           <div className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
-            <div className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded shadow-sm"></div> Planeados ({data.meta})
+            <div className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded shadow-sm"></div> Dados de alta ({data.meta})
           </div>
           <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 dark:text-emerald-400">
             {data.porcentaje}% completado
@@ -777,14 +770,14 @@ export default function Dashboard2Page() {
     );
   };
 
-  const BarChartLotes = ({ data }: { data: any[] }) => {
+  const BarChartLotes = ({ data }: { data: DatoLoteGrafica[] }) => {
     const totalLotes = data.reduce((sum, d) => sum + d.totales, 0);
     const totalProgramados = data.reduce((sum, d) => sum + (d.programados || 0), 0);
 
     console.log(`%c📊 [GRÁFICA LOTES] Resumen:`, 'background: #ffb75e; color: #1a1a2e; padding: 3px; font-weight: bold;');
     console.log('  → Total lotes en gráfica:', totalLotes);
     console.log('  → Lotes programados (esperados):', totalProgramados);
-    console.log('  → Detalle por máquina:', data.map((d: any) => ({
+    console.log('  → Detalle por máquina:', data.map((d) => ({
       maquina: d.etiqueta,
       completados: d.completados,
       pendientes: d.pendientes,
@@ -936,7 +929,7 @@ export default function Dashboard2Page() {
     );
   };
 
-  const ParetoChart = ({ data }: { data: any[] }) => {
+  const ParetoChart = ({ data }: { data: ParetoItem[] }) => {
     if (data.length === 0) return <p className="text-center text-slate-500 mt-10">Sin paros registrados</p>;
     const maxMin = Math.max(...data.map(d => d.minutos)) * 1.2;
 
@@ -1000,7 +993,14 @@ export default function Dashboard2Page() {
     );
   };
 
-  const DonutChart = ({ tSetup, tComida, tNoProg, tEfectivo, tDespeje, tAusencia = 0 }: any) => {
+  const DonutChart = ({ tSetup, tComida, tNoProg, tEfectivo, tDespeje, tAusencia = 0 }: {
+    tSetup: number;
+    tComida: number;
+    tNoProg: number;
+    tEfectivo: number;
+    tDespeje: number;
+    tAusencia?: number;
+  }) => {
     const total = tSetup + tComida + tNoProg + tEfectivo + tDespeje + tAusencia || 1;
     const pEfectivo = (tEfectivo / total) * 100;
     const pSetup = (tSetup / total) * 100;
@@ -1132,7 +1132,7 @@ export default function Dashboard2Page() {
                 <div key={idx} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
                   <span className="font-bold text-slate-700 dark:text-slate-200 uppercase">{row.maquina}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-400 capitalize">{row.estado === 'paro' && row.nombreParo ? `Paro: ${row.nombreParo}` : row.estado === 'setup' ? 'Set Up' : row.estado}</span>
+                    <span className="text-xs font-semibold text-slate-400 capitalize">{row.estado === 'paro' && row.nombreParo ? `Paro: ${row.nombreParo}` : row.estado === 'setup' ? (row.nombreParo || 'Set Up') : row.estado}</span>
                     {getStatusIcon(row.estado)}
                   </div>
                 </div>
@@ -1365,7 +1365,7 @@ export default function Dashboard2Page() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {parosOtros.length > 0 ? (
-                parosOtros.map((row: any, idx: number) => {
+                parosOtros.map((row, idx: number) => {
                   const duracion = getHoursDiff(row.hora_inicio, row.hora_termino) * 60;
                   return (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">

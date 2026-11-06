@@ -5,7 +5,7 @@ import type { Paro } from '../interfaces/paros';
 import type { Turno } from '../interfaces/turnos';
 import type { LineaProduccion } from '../interfaces/lineas_produccion';
 import type { Maquina } from '../interfaces/maquinas';
-import type { Lote } from '../interfaces/lotes';
+import type { Lote, Meta_lotes_semana } from '../interfaces/lotes';
 import type { Producto } from '../interfaces/productos';
 import type { User } from '../interfaces/login';
 import type { Usuario } from '../interfaces/usuarios';
@@ -14,8 +14,9 @@ import type { Semana } from '../interfaces/semanas';
 import type { Produccion } from '../interfaces/produccion';
 import type { RegistroParo } from '../interfaces/produccion';
 import type { ProduccionProductoMaquina } from '../interfaces/produccionxmaquina';
-import type {correo} from '../interfaces/correos';
+import type { correo } from '../interfaces/correos';
 import type { TiempoEnvio } from '../interfaces/tiempoEnvio';
+
 
 //import type { Usuario } from '../interfaces/usuarios';
 
@@ -364,8 +365,8 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                     success: true,
                     status: 200,
                     result: [
-                        {id_produccionMaqinaxProducto: "ppm101", id_maquina: "maquina1", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 500, tipo: "Automática", estatus: true },
-                        {id_produccionMaqinaxProducto: "ppm102", id_maquina: "maquina2", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 300, tipo: "Manual", estatus: true },
+                        { id_produccionMaqinaxProducto: "ppm101", id_maquina: "maquina1", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 500, tipo: "Automática", estatus: true },
+                        { id_produccionMaqinaxProducto: "ppm102", id_maquina: "maquina2", id_producto: "PROD-101", producto: "Tornillo de Titanio", velocidad: 300, tipo: "Manual", estatus: true },
                         { id_produccionMaqinaxProducto: "ppm103", id_maquina: "maquina1", id_producto: "PROD-102", producto: "Aceite Lubricante Sintético", velocidad: 200, tipo: "Automática", estatus: true },
                         { id_produccionMaqinaxProducto: "ppm104", id_maquina: "maquina2", id_producto: "PROD-103", producto: "Banda Transportadora", velocidad: 400, tipo: "Automática", estatus: true },
                     ] as ProduccionProductoMaquina[],
@@ -648,7 +649,7 @@ export const ApiService = {
         } catch (error) {
             console.error('Error en getParosBySemana:', error);
             throw error;
-        }  
+        }
     },
     async getProduccionesDiarias(fecha: string): Promise<Produccion[]> {
         try {
@@ -663,9 +664,9 @@ export const ApiService = {
         } catch (error) {
             console.error('Error en getProduccionesDiarias:', error);
             throw error;
-        }     
+        }
     },
-    async getParosDiarios (fecha: string): Promise<RegistroParo[]> {
+    async getParosDiarios(fecha: string): Promise<RegistroParo[]> {
         try {
             const response = await runGoogle<ApiResponse<RegistroParo[]>>('apiHandler', {
                 action: 'getParosDiarios',
@@ -1124,7 +1125,7 @@ export const ApiService = {
         }
     },
 
-    
+
 
     // 👇 Solo estas 3 funciones van en tu ApiService.ts de React 👇
 
@@ -1207,6 +1208,24 @@ export const ApiService = {
             action: 'updateCorreoDuracion',
             data
         });
+    },
+    async getLotesBySemana(id_semana: string): Promise<Lote[]> {
+        try {
+            const response = await runGoogle<ApiResponse<Lote[]>>('apiHandler', { action: 'getLotesBySemana', id_semana });
+            return response.result || [];
+        } catch (error) {
+            console.error('Error en getLotesBySemana:', error);
+            return [];
+        }
+    },
+    async getLotesBySemanaContMetaProcesados(id_semana: string): Promise<{} | Meta_lotes_semana> {
+        try {
+            const response = await runGoogle<ApiResponse<Meta_lotes_semana>>('apiHandler', { action: 'getLotesBySemanaContMetaProcesados', id_semana });
+            return response.result || {};
+        } catch (error) {
+            console.error('Error en getLotesBySemanaContMetaProcesados:', error);
+            return [];
+        }
     },
 
 }
