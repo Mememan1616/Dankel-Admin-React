@@ -270,52 +270,6 @@ const runGoogle = <T>(serverFunction: string, params: any): Promise<T> => {
                     error: null
                 } as unknown as T);
             }
-            if (params.action === 'getAllLotes') {
-                return resolve({
-                    success: true,
-                    status: 200,
-                    result: [
-                        {
-                            id_lote: "LOT-001",
-                            lote: "Lote Ensamblaje A",
-                            descripcion: "Producción continua del turno matutino",
-                            estatus: true,
-                            id_linea_trabajo: "linea1",
-                            linea: "Linea 1",
-                            maquinas: [
-                                { id_maquina: "MAQ-101", estatus: true },
-                                { id_maquina: "MAQ-102", estatus: true }
-                            ]
-                        },
-                        {
-                            id_lote: "LOT-002",
-                            lote: "Lote Empaquetado B",
-                            descripcion: "Cierre y sellado de cajas para exportación",
-                            estatus: true,
-                            id_linea_trabajo: "linea2",
-                            linea: "Linea 2",
-                            maquinas: [
-                                { id_maquina: "MAQ-201", estatus: true },
-                                { id_maquina: "MAQ-202", estatus: true },
-                                { id_maquina: "MAQ-203", estatus: true }
-                            ]
-                        },
-                        {
-                            id_lote: "LOT-003",
-                            lote: "Lote Pruebas Calidad",
-                            descripcion: "Lote de inspección post-mantenimiento preventivo",
-                            estatus: false,
-                            id_linea_trabajo: "linea1",
-                            linea: "Linea 1",
-                            maquinas: [
-                                { id_maquina: "MAQ-301", estatus: true },
-                                { id_maquina: "MAQ-302", estatus: true }
-                            ]
-                        }
-                    ] as Lote[],
-                    error: null
-                } as unknown as T);
-            }
             if (params.action === 'getAllProductos') {
                 return resolve({
                     success: true,
@@ -560,20 +514,6 @@ export const ApiService = {
             return response.result || [];
         } catch (error) {
             console.error('Error en getMaquinas:', error);
-            throw error;
-        }
-    },
-    async getAllLotes(): Promise<Lote[]> {
-        try {
-            const response = await runGoogle<ApiResponse<Lote[]>>('apiHandler', {
-                action: 'getAllLotes'
-            });
-            if (!response.success) {
-                throw new Error(`Error del servidor (${response.status}): ${response.error}`);
-            }
-            return response.result || [];
-        } catch (error) {
-            console.error('Error en getLotes:', error);
             throw error;
         }
     },
@@ -1211,20 +1151,27 @@ export const ApiService = {
     },
     async getLotesBySemana(id_semana: string): Promise<Lote[]> {
         try {
-            const response = await runGoogle<ApiResponse<Lote[]>>('apiHandler', { action: 'getLotesBySemana', id_semana });
-            return response.result || [];
+            const response = await runGoogle<ApiResponse<Lote[] | Record<string, Lote>>>('apiHandler', { action: 'getLotesBySemana', id_semana });
+            const data = response.result;
+            if (Array.isArray(data)) return data;
+            if (!data || typeof data !== 'object') return [];
+            return Object.entries(data).map(([clave, valor]) => ({
+                ...valor,
+                id_lote: valor?.id_lote || clave
+            }));
         } catch (error) {
             console.error('Error en getLotesBySemana:', error);
             return [];
         }
     },
-    async getLotesBySemanaContMetaProcesados(id_semana: string): Promise<{} | Meta_lotes_semana> {
+    async getLotesBySemanaContMetaProcesados(id_semana: string): Promise<Meta_lotes_semana | null> {
         try {
             const response = await runGoogle<ApiResponse<Meta_lotes_semana>>('apiHandler', { action: 'getLotesBySemanaContMetaProcesados', id_semana });
-            return response.result || {};
+            if (!response.success) return null;
+            return response.result ?? null;
         } catch (error) {
             console.error('Error en getLotesBySemanaContMetaProcesados:', error);
-            return [];
+            return null;
         }
     },
 

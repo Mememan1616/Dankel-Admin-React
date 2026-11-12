@@ -20,7 +20,7 @@ export interface Maquina_Lote {
     estatus: boolean;
 }
 
-export interface Meta_lotes_semana{
-    lotes_totales: Number;
-    lotes_terminados: Number;
+export interface Meta_lotes_semana {
+    lotes_totales: number;
+    lotes_terminados: number;
 }

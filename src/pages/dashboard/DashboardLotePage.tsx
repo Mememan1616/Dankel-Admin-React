@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { ApiService } from '../../services/ApiService';
 import { useDatosPorSemana } from '../../hooks/useDatosPorSemana';
 import { getSemanaMasReciente } from '../../utils/semanas';
-import { Factory, TrendingUp, AlertCircle, RefreshCw, PieChart, Box } from 'lucide-react';
+import { Factory, TrendingUp, AlertCircle, RefreshCw, PieChart, Box, X, Download, ClipboardList } from 'lucide-react';
 import type { Maquina } from '../../interfaces/maquinas';
 import type { Semana } from '../../interfaces/semanas';
+import type { RegistroParoDashboard } from '../../interfaces/dashboard';
 
 const getHoursDiff = (start: string, end: string) => {
   if (!start || !end) return 0;
@@ -227,14 +228,18 @@ export default function DashboardLotePage() {
 
   const [maquinas, setMaquinas] = useState<Maquina[]>([]);
   const [semanas, setSemanas] = useState<Semana[]>([]);
-  const [lotes, setLotes] = useState<any[]>([]);
 
   const [filtroSemana, setFiltroSemana] = useState('');
   const [filtroMaquina, setFiltroMaquina] = useState('todas');
 
-  const { produccion, paros, loading: loadingDatos, recargar } = useDatosPorSemana({
+  const [modalParosAbierto, setModalParosAbierto] = useState(false);
+  const [parosModalData, setParosModalData] = useState<RegistroParoDashboard[]>([]);
+  const [parosModalLote, setParosModalLote] = useState('');
+
+  const { produccion, paros, lotes, loading: loadingDatos, recargar } = useDatosPorSemana({
     semanas,
-    seleccionadas: [filtroSemana]
+    seleccionadas: [filtroSemana],
+    incluir: { lotes: true }
   });
 
   useEffect(() => {
@@ -244,13 +249,11 @@ export default function DashboardLotePage() {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [maqData, semData, lotesData] = await Promise.all([
+      const [maqData, semData] = await Promise.all([
         ApiService.getAllMaquinas(),
         ApiService.getAllSemanas(),
-        ApiService.getAllLotes(),
       ]);
       setMaquinas(maqData || []);
-      setLotes(lotesData || []);
       
       const listaSemanas = semData || [];
 
@@ -273,7 +276,7 @@ export default function DashboardLotePage() {
 
   const lotesDeSemana = useMemo(() => {
     if (!filtroSemana) return [];
-    return lotes.filter(l => String(l.id_semana) === String(filtroSemana));
+    return lotes;
   }, [lotes, filtroSemana]);
 
   const datosAgrupadosLotes = useMemo(() => {
@@ -299,6 +302,12 @@ export default function DashboardLotePage() {
 
       if (filtroMaquina !== 'todas' && prodFiltrada.length === 0) return;
 
+      const programadosNames = ['SET UP', 'COMIDA', 'DESPEJE'];
+      const otrosParos = parosFiltrada.filter(p => {
+        const nombre = String(p.paro || p.descripcion_paro || '').toUpperCase();
+        return !programadosNames.some(pg => nombre.includes(pg));
+      });
+
       const globalMetrics = calcularMetricas(prodFiltrada, parosFiltrada);
 
       const maquinasDesglose: any[] = [];
@@ -322,7 +331,8 @@ export default function DashboardLotePage() {
         descripcion: lote.descripcion,
         producto: lote.producto,
         global: globalMetrics,
-        maquinasDesglose
+        maquinasDesglose,
+        otrosParos
       });
     });
 
@@ -359,6 +369,36 @@ export default function DashboardLotePage() {
     };
 
   }, [datosAgrupadosLotes]);
+
+  const abrirModalParos = (otrosParos: RegistroParoDashboard[], lote: string) => {
+    setParosModalData(otrosParos);
+    setParosModalLote(lote);
+    setModalParosAbierto(true);
+  };
+
+  const exportarParosCSV = () => {
+    const headers = ['Máquina', 'Paro', 'Descripción', 'Inicio', 'Término', 'Duración (min)'];
+    const rows = parosModalData.map(p => {
+      const duracion = getHoursDiff(p.hora_inicio, p.hora_termino) * 60;
+      return [
+        `"${String(p.maquina || '').replace(/"/g, '""')}"`,
+        `"${String(p.paro || '').replace(/"/g, '""')}"`,
+        `"${String(p.descripcion_paro || '').replace(/"/g, '""')}"`,
+        `"${String(p.hora_inicio || '').replace(/"/g, '""')}"`,
+        `"${String(p.hora_termino || '').replace(/"/g, '""')}"`,
+        Math.round(duracion)
+      ].join(',');
+    });
+
+    const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Otros_Paros_${parosModalLote.replace(/\s+/g, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="w-full h-full min-h-screen bg-slate-50 dark:bg-slate-900 p-2 sm:p-4 lg:p-6 transition-colors duration-300 font-sans">
@@ -457,18 +497,29 @@ export default function DashboardLotePage() {
           {datosAgrupadosLotes.map((loteData, idx) => (
             <div key={idx} className="bg-slate-100 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
               
-              <div className="flex items-center gap-3 mb-6 border-b border-slate-200 dark:border-slate-700 pb-4">
-                <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center shadow-sm">
-                  <Box className="w-5 h-5 text-white" />
+              <div className="flex items-center justify-between gap-3 mb-6 border-b border-slate-200 dark:border-slate-700 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center shadow-sm">
+                    <Box className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-extrabold text-slate-800 dark:text-white uppercase tracking-wide">
+                      {loteData.lote}
+                    </h2>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                      {loteData.producto} {loteData.descripcion ? `- ${loteData.descripcion}` : ''}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-extrabold text-slate-800 dark:text-white uppercase tracking-wide">
-                    {loteData.lote}
-                  </h2>
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                    {loteData.producto} {loteData.descripcion ? `- ${loteData.descripcion}` : ''}
-                  </p>
-                </div>
+                {loteData.otrosParos.length > 0 && (
+                  <button
+                    onClick={() => abrirModalParos(loteData.otrosParos, loteData.lote)}
+                    className="flex items-center gap-2 bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30 px-3 py-2 rounded-xl text-xs font-bold hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-colors"
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                    Otros Paros ({loteData.otrosParos.length})
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-6">
@@ -623,6 +674,79 @@ export default function DashboardLotePage() {
               )}
             </div>
           ))}
+          </div>
+        </div>
+      )}
+
+      {modalParosAbierto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-50 dark:bg-orange-500/10 rounded-xl">
+                  <ClipboardList className="w-5 h-5 text-orange-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white">Otros Paros — {parosModalLote}</h3>
+                  <p className="text-xs font-medium text-slate-400">{parosModalData.length} registro(s)</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarParosCSV}
+                  className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Exportar CSV
+                </button>
+                <button
+                  onClick={() => setModalParosAbierto(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-5">
+              {parosModalData.length === 0 ? (
+                <p className="text-center text-slate-400 py-8">No hay otros paros registrados en este lote.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                      <th className="pb-3 pr-4">Máquina</th>
+                      <th className="pb-3 pr-4">Paro</th>
+                      <th className="pb-3 pr-4">Descripción</th>
+                      <th className="pb-3 pr-4">Inicio</th>
+                      <th className="pb-3 pr-4">Término</th>
+                      <th className="pb-3 text-right">Duración</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parosModalData.map((p, i) => {
+                      const duracion = Math.round(getHoursDiff(p.hora_inicio, p.hora_termino) * 60);
+                      return (
+                        <tr key={i} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                          <td className="py-3 pr-4 font-semibold text-slate-800 dark:text-white">{p.maquina || '-'}</td>
+                          <td className="py-3 pr-4 font-medium text-slate-700 dark:text-slate-200">{p.paro || '-'}</td>
+                          <td className="py-3 pr-4 text-slate-500 dark:text-slate-400 max-w-xs truncate" title={p.descripcion_paro || ''}>
+                            {p.descripcion_paro || '-'}
+                          </td>
+                          <td className="py-3 pr-4 text-slate-600 dark:text-slate-300 font-mono text-xs">{p.hora_inicio || '-'}</td>
+                          <td className="py-3 pr-4 text-slate-600 dark:text-slate-300 font-mono text-xs">{p.hora_termino || '-'}</td>
+                          <td className="py-3 text-right">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300">
+                              {duracion} min
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
       )}

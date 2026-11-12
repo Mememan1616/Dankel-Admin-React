@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Lote } from '../../../interfaces/lotes';
 import type { Maquina } from '../../../interfaces/maquinas';
 import type { Semana } from '../../../interfaces/semanas';
 import { ApiService } from '../../../services/ApiService';
 import { parseFecha } from '../../../utils/fechas';
+import { getSemanaMasReciente } from '../../../utils/semanas';
 import {
     Edit,
     Search,
@@ -28,36 +29,53 @@ export default function LotesCrud() {
     const [searchTerm, setSearchTerm] = useState('');
     const [mostrarFiltros, setMostrarFiltros] = useState(false);
     const [filtroEstatus, setFiltroEstatus] = useState('todos');
+    const [filtroSemana, setFiltroSemana] = useState('');
 
-    useEffect(() => {
-        getAllLotes();
-        loadMaquinasCatalog();
-        loadSemanasCatalog();
+    const fetchLotes = useCallback(async (semana: string): Promise<Lote[]> => {
+        try {
+            return await ApiService.getLotesBySemana(semana);
+        } catch (error) {
+            console.error('Error al cargar lotes por semana:', error);
+            return [];
+        }
     }, []);
 
-    const loadSemanasCatalog = async () => {
-        try {
-            const data = await ApiService.getAllSemanas();
-            setSemanas(data);
-        } catch (error) {
-            console.error('Error al cargar catálogo de semanas:', error);
-        }
-    };
+    const cargarLotes = useCallback(async () => {
+        if (!filtroSemana) return;
+        const data = await fetchLotes(filtroSemana);
+        setLotes(data);
+    }, [filtroSemana, fetchLotes]);
 
-    const loadMaquinasCatalog = async () => {
-        try {
-            const data = await ApiService.getAllMaquinasLote();
-            setCatalogoMaquinas(data);
-        } catch (error) {
-            console.error('Error al cargar catálogo de máquinas:', error);
-        }
-    };
+    useEffect(() => {
+        const cargarCatalogos = async () => {
+            try {
+                const [maquinasData, semanasData] = await Promise.all([
+                    ApiService.getAllMaquinasLote(),
+                    ApiService.getAllSemanas()
+                ]);
+                setCatalogoMaquinas(maquinasData);
+                setSemanas(semanasData);
+                if (semanasData.length > 0) {
+                    setFiltroSemana(getSemanaMasReciente(semanasData));
+                }
+            } catch (error) {
+                console.error('Error al cargar catálogos:', error);
+            }
+        };
+        cargarCatalogos();
+    }, []);
 
-    const getAllLotes = async () => {
-        // Asegúrate de tener este método adaptado en tu ApiService
-        const lotesData: Lote[] = await ApiService.getAllLotes();
-        setLotes(lotesData);
-    };
+    useEffect(() => {
+        let cancelado = false;
+        if (filtroSemana) {
+            fetchLotes(filtroSemana).then((data) => {
+                if (!cancelado) setLotes(data);
+            });
+        }
+        return () => {
+            cancelado = true;
+        };
+    }, [filtroSemana, fetchLotes]);
 
     // --- FUNCIÓN PARA ABRIR EL FORMULARIO ---
     const MostrarFormulario = (action: string, lote?: Lote) => {
@@ -78,7 +96,7 @@ export default function LotesCrud() {
             const loteActualizado = { ...lote, estatus: !lote.estatus };
             const response = await ApiService.updateLote(loteActualizado);
             if (response.success) {
-                getAllLotes(); // Refrescar la tabla
+                cargarLotes(); // Refrescar la tabla
             } else {
                 alert('Hubo un error al actualizar el estatus.');
             }
@@ -169,16 +187,32 @@ export default function LotesCrud() {
                             className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 transition-colors"
                         />
                     </div>
-                    <button 
-                        onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                        className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                            mostrarFiltros 
-                                ? 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-400 dark:border-cyan-800' 
-                                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'
-                        }`}
-                    >
-                        <Filter className="w-4 h-4" /> {mostrarFiltros ? 'Ocultar Filtros' : 'Filtros'}
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <div className="w-full sm:w-auto">
+                            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Semana</label>
+                            <select 
+                                value={filtroSemana} 
+                                onChange={(e) => setFiltroSemana(e.target.value)}
+                                className="w-full sm:w-64 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 outline-none text-slate-700 dark:text-slate-200"
+                            >
+                                {semanas.map((semana) => (
+                                    <option key={semana.id_semana} value={semana.id_semana}>
+                                        {semana.descripcion || semana.id_semana}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <button 
+                            onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                                mostrarFiltros 
+                                    ? 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-400 dark:border-cyan-800' 
+                                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'
+                            }`}
+                        >
+                            <Filter className="w-4 h-4" /> {mostrarFiltros ? 'Ocultar Filtros' : 'Filtros'}
+                        </button>
+                    </div>
                 </div>
 
                 {/* --- Panel desplegable de Filtros Adicionales --- */}
@@ -315,9 +349,13 @@ export default function LotesCrud() {
                 }}
                 title={title}
                 action={action}
-                refreshData={getAllLotes}
+                refreshData={cargarLotes}
                 lote={selectedLote ? selectedLote : undefined}
                 existingLotes={lotes} // Pasamos los lotes para validar duplicados
+                semanaInicial={filtroSemana}
+                onSemanaSaved={(idSemana) => {
+                    if (idSemana && idSemana !== filtroSemana) setFiltroSemana(idSemana);
+                }}
             />
         </>
     );

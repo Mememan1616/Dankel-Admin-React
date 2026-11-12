@@ -32,9 +32,11 @@ interface FormularioLoteProps {
   lote?: Lote;
   refreshData: () => void;
   existingLotes: Lote[];
+  semanaInicial?: string;
+  onSemanaSaved?: (id_semana: string) => void;
 }
 
-export default function FormularioLote({ isOpen, onClose, title, lote, action, refreshData, existingLotes }: FormularioLoteProps) {
+export default function FormularioLote({ isOpen, onClose, title, lote, action, refreshData, existingLotes, semanaInicial, onSemanaSaved }: FormularioLoteProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -99,7 +101,7 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
           maquinas: lote.maquinas || [] 
         });
       } else {
-        setFormData(defaultFormData);
+        setFormData({ ...defaultFormData, id_semana: semanaInicial || '' });
       }
 
       setShowSuccess(false);
@@ -107,7 +109,7 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
       setSemanaDropdownOpen(false);
       loadAllData();
     }
-  }, [isOpen, lote]);
+  }, [isOpen, lote, semanaInicial]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -272,6 +274,9 @@ export default function FormularioLote({ isOpen, onClose, title, lote, action, r
       if (response.success) {
         if (action === 'Crear' && formData.id_semana) {
           updateSemanaLotes(formData.id_semana).catch(() => {});
+        }
+        if (formData.id_semana) {
+          onSemanaSaved?.(formData.id_semana);
         }
         setShowSuccess(true);
         refreshData();

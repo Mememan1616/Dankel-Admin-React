@@ -5,7 +5,6 @@ import type { Produccion } from '../../../interfaces/produccion';
 import type { Maquina } from '../../../interfaces/maquinas';
 import type { Turno } from '../../../interfaces/turnos';
 import type { Semana } from '../../../interfaces/semanas';
-import type { Lote } from '../../../interfaces/lotes';
 import type { Producto } from '../../../interfaces/productos';
 import type { Usuario } from '../../../interfaces/usuarios';
 import { ApiService } from '../../../services/ApiService';
@@ -18,7 +17,6 @@ export default function ProduccionCrud() {
     const [maquinas, setMaquinas] = useState<Maquina[]>([]);
     const [turnos, setTurnos] = useState<Turno[]>([]);
     const [semanas, setSemanas] = useState<Semana[]>([]);
-    const [lotes, setLotes] = useState<Lote[]>([]);
     const [productos, setProductos] = useState<Producto[]>([]);
     const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
@@ -31,10 +29,10 @@ export default function ProduccionCrud() {
     const [filtroSemana, setFiltroSemana] = useState('');
     const [isExporting, setIsExporting] = useState(false);
 
-    const { produccion: producciones, loading, recargar } = useDatosPorSemana({
+    const { produccion: producciones, lotes, loading, recargar } = useDatosPorSemana({
         semanas,
         seleccionadas: filtroSemana === 'todas' ? [] : [filtroSemana],
-        incluir: { produccion: true, paros: false }
+        incluir: { produccion: true, paros: false, lotes: true }
     });
 
     useEffect(() => {
@@ -43,11 +41,10 @@ export default function ProduccionCrud() {
 
     const cargarDatos = async () => {
         try {
-            const [maqData, turnosData, semanasData, lotesData, prodCatalogData, usersData] = await Promise.all([
+            const [maqData, turnosData, semanasData, prodCatalogData, usersData] = await Promise.all([
                 ApiService.getAllMaquinas(),
                 ApiService.getAllTurnos(),
                 ApiService.getAllSemanas(),
-                ApiService.getAllLotes(),
                 ApiService.getAllProductos(),
                 ApiService.getAllUsers()
             ]);
@@ -55,7 +52,6 @@ export default function ProduccionCrud() {
             setMaquinas(maqData || []);
             setTurnos(turnosData || []);
             setSemanas(semanasData || []);
-            setLotes(lotesData || []);
             setProductos(prodCatalogData || []);
             setUsuarios(usersData || []);
 

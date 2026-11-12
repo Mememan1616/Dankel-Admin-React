@@ -17,7 +17,6 @@ import {
 import type { Maquina } from '../../interfaces/maquinas';
 import type { Turno } from '../../interfaces/turnos';
 import type { Semana } from '../../interfaces/semanas';
-import type { Lote } from '../../interfaces/lotes';
 import type {
   MultiSelectProps,
   Metricas,
@@ -98,13 +97,76 @@ const MultiSelectDropdown = ({ title, options, selectedValues, onChange }: Multi
   );
 };
 
+// --- COMPONENTE SINGLE-SELECT PERSONALIZADO ---
+const SingleSelectDropdown = ({
+  title,
+  options,
+  selectedValue,
+  onChange,
+}: {
+  title: string;
+  options: { id: string; label: string }[];
+  selectedValue?: string;
+  onChange: (value: string) => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.id === selectedValue);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors w-full sm:w-auto hover:bg-slate-100 dark:hover:bg-slate-700"
+      >
+        <Filter className="w-4 h-4 text-slate-400" />
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[160px]">
+          {selectedOption?.label || title}
+        </span>
+        <ChevronDown className="w-4 h-4 text-slate-400 ml-1" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-2 max-h-64 overflow-y-auto">
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                onChange(opt.id);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors ${
+                opt.id === selectedValue
+                  ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const [maquinas, setMaquinas] = useState<Maquina[]>([]);
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [semanas, setSemanas] = useState<Semana[]>([]);
-  const [lotes, setLotes] = useState<Lote[]>([]);
 
   const [filtrosSemanas, setFiltrosSemanas] = useState<string[]>([]);
   const [filtrosTurnos, setFiltrosTurnos] = useState<string[]>([]);
@@ -112,10 +174,11 @@ export default function DashboardPage() {
 
   const [filtroMaquina, setFiltroMaquina] = useState('todas');
 
-  const { produccion, paros, loading: loadingDatos } = useDatosPorSemana({
+  const { produccion, paros, lotes, metaSemana, loading: loadingDatos } = useDatosPorSemana({
     semanas,
     seleccionadas: filtrosSemanas,
-    pollingMs: 30000
+    pollingMs: 30000,
+    incluir: { meta: true, lotes: true }
   });
 
   useEffect(() => {
@@ -133,15 +196,13 @@ export default function DashboardPage() {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const [maqData, turnosData, semData, lotesData] = await Promise.all([
+      const [maqData, turnosData, semData] = await Promise.all([
         ApiService.getAllMaquinas(),
         ApiService.getAllTurnos(),
-        ApiService.getAllSemanas(),
-        ApiService.getAllLotes()
+        ApiService.getAllSemanas()
       ]);
       setMaquinas(maqData || []);
       setTurnos(turnosData || []);
-      setLotes(lotesData || []);
 
       const listaSemanas = semData || [];
 
@@ -515,7 +576,7 @@ export default function DashboardPage() {
       let completados = 0;
       let pendientes = 0;
 
-      lotes.filter(l => l.estatus !== false && l.lote && String(l.lote).trim() !== '').forEach(l => {
+      lotes.filter(l => l.lote && String(l.lote).trim() !== '').forEach(l => {
         let pertenece = false;
         let estaCompletadoEnMaquina = false;
 
@@ -580,20 +641,21 @@ export default function DashboardPage() {
       l.lote && String(l.lote).trim() !== ''
     );
 
-    const meta = lotesSemana.length;
-
-    const realizados = lotesSemana.filter(l => {
+    const realizadosCliente = lotesSemana.filter(l => {
       if (!Array.isArray(l.maquinas) || l.maquinas.length === 0) return false;
       return l.maquinas.every((m: MaquinaLoteInfo) =>
         m.estatus === false || String(m.estatus).toLowerCase() === 'false'
       );
     }).length;
 
+    const meta = metaSemana?.lotes_totales ?? lotesSemana.length;
+    const realizados = metaSemana?.lotes_terminados ?? realizadosCliente;
+
     const pendientes = Math.max(meta - realizados, 0);
     const porcentaje = meta > 0 ? Math.round((realizados / meta) * 10000) / 100 : 0;
 
     return { meta, realizados, pendientes, porcentaje, semana: semana.descripcion };
-  }, [lotes, semanas, filtrosSemanas]);
+  }, [lotes, metaSemana, semanas, filtrosSemanas]);
 
   const tablaRendimientoLotes = useMemo<FilaRendimientoLote[]>(() => {
     const p = applyFilters(produccion, 'prod');
@@ -773,11 +835,9 @@ export default function DashboardPage() {
 
   const BarChartLotes = ({ data }: { data: DatoLoteGrafica[] }) => {
     const totalLotes = data.reduce((sum, d) => sum + d.totales, 0);
-    const totalProgramados = data.reduce((sum, d) => sum + (d.programados || 0), 0);
 
     console.log(`%c📊 [GRÁFICA LOTES] Resumen:`, 'background: #ffb75e; color: #1a1a2e; padding: 3px; font-weight: bold;');
     console.log('  → Total lotes en gráfica:', totalLotes);
-    console.log('  → Lotes programados (esperados):', totalProgramados);
     console.log('  → Detalle por máquina:', data.map((d) => ({
       maquina: d.etiqueta,
       completados: d.completados,
@@ -795,7 +855,6 @@ export default function DashboardPage() {
               <h3 className="text-xl font-extrabold text-slate-800 dark:text-white">Producción VS Objetivo</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                 Lotes completados por máquina
-                {totalProgramados > 0 && <><span className="mx-2">•</span><span className="text-indigo-500 font-bold">{totalProgramados} Programados</span></>}
               </p>
             </div>
           </div>
@@ -825,7 +884,6 @@ export default function DashboardPage() {
             <h3 className="text-xl font-extrabold text-slate-800 dark:text-white">Producción VS Objetivo</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
               Lotes completados por máquina
-              {totalProgramados > 0 && <><span className="mx-2">•</span><span className="text-indigo-500 font-bold">{totalProgramados} Programados</span></>}
             </p>
           </div>
         </div>
@@ -1050,7 +1108,12 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          <MultiSelectDropdown title="Semanas" options={opcionesSemanas} selectedValues={filtrosSemanas} onChange={setFiltrosSemanas} />
+          <SingleSelectDropdown
+            title="Semana"
+            options={opcionesSemanas}
+            selectedValue={filtrosSemanas[0] ?? ''}
+            onChange={(value) => setFiltrosSemanas(value ? [value] : [])}
+          />
           <MultiSelectDropdown title="Turnos" options={opcionesTurnos} selectedValues={filtrosTurnos} onChange={setFiltrosTurnos} />
           <MultiSelectDropdown title="Lotes" options={opcionesLotes} selectedValues={filtrosLotes} onChange={setFiltrosLotes} />
 
